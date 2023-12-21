@@ -3,7 +3,7 @@ from my_assistant import DataScienceInterviewAssistant  # Import your class
 from flask import Flask, render_template, request, redirect, url_for, flash, session
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from database.user_manager import UserManager
-from database.firestoreCRUD import FirestoreCRUD
+# from database.firestoreCRUD import FirestoreCRUD
 from firebase_admin import credentials, firestore
 import firebase_admin
 
@@ -32,14 +32,8 @@ login_manager.login_view = 'please_login'
 users = {'user@example.com': {'password': '123456'}}
 
 def add_init_user(user_id='x', name='y', email='z'):
-    credential_path = '/home/codered/mystuff/progs/interview-mentor-firebase-adminsdk-sguq7-aee5c6cca8.json'
-    collection_name = 'users'
-    if not firebase_admin._apps:
-        cred = credentials.Certificate(credential_path)
-        firebase_admin.initialize_app(cred)
-
-    firestore_crud = FirestoreCRUD(credential_path, collection_name)
-    user_manager = UserManager(firestore_crud)
+    
+    user_manager = UserManager()
     user_manager.initialize_user(user_id, name, email)
 
 
