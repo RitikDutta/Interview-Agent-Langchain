@@ -4,6 +4,7 @@
     <title>Interview Assistant</title>
 </head>
 <body>
+    <h1>Welcome {{name}}</h1>
     <form method="post">
         <label for="question">Enter your interview question:</label><br>
         <input type="text" id="question" name="question"><br>
@@ -17,5 +18,8 @@
         {% endfor %}
         <h2>Score: {{ score }}</h2>
     {% endif %}
+
+
+    <a href="{{ url_for('logout') }}">Logout</a>
 </body>
 </html>
