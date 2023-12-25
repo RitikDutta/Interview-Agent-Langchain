@@ -3,13 +3,15 @@ import random
 import time
 from dotenv import load_dotenv
 import os
+from database.user_manager import UserManager
 
 # Load the OpenAI API key from .env file
 load_dotenv()
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
 class DataScienceInterviewAssistant:
-    def __init__(self, instruction):
+    def __init__(self, instruction, current_user):
+            self.current_user = current_user
             self.client = openai.OpenAI()
             self.assistant = self.client.beta.assistants.create(
                 name="Data Science Interview Assistant",
@@ -18,6 +20,21 @@ class DataScienceInterviewAssistant:
             )
             self.thread = self.client.beta.threads.create()
             print(f"Thread created with ID: {self.thread.id}")
+            self.usermanager = UserManager()
+            print("aaaaaaaaaaaaaaaaaaaa" ,self.usermanager.get_assistant_id(str(current_user)))
+            print("CURRENT", str(current_user))
+            
+            # print_thread_conversation(self.thread.id)
+            if self.usermanager.get_assistant_id(str(current_user)) and self.usermanager.get_thread_id(str(current_user)) != None:
+                print("TRUE")
+                self.assistant.id = self.usermanager.get_assistant_id(str(current_user))
+                self.thread.id = self.usermanager.get_thread_id(str(current_user))
+
+
+            else:
+                self.usermanager.add_assistant_id(str(current_user), str(self.assistant.id))
+                self.usermanager.add_thread_id(str(current_user), str(self.thread.id))
+
 
     def conduct_interview(self, question):
         thread = self.thread
@@ -25,7 +42,7 @@ class DataScienceInterviewAssistant:
         
         # init user 
         # self.client.beta.threads.messages.create(
-        #     thread_id=thread.id,
+        #     thread_id=thread.id,thread.id
         #     role="user",
         #     content="Hey"
         # )
@@ -91,6 +108,7 @@ make that text in structured json format exactly like this
                 messages = self.client.beta.threads.messages.list(
                     thread_id=thread.id
                 )
+                print(messages.data)
                 interview_responses = []
                 for msg in messages.data:
                     role = msg.role
@@ -120,3 +138,18 @@ make that text in structured json format exactly like this
 
     def get_thread_id(self):
         return self.thread
+
+    def get_messages(self, custom_name):
+        thread_id = self.usermanager.get_thread_id(str(self.current_user))
+        # Retrieve messages from a specific thread
+        messages = self.client.beta.threads.messages.list(thread_id=thread_id)
+        formatted_messages = []
+        for msg in messages.data:
+            role = msg.role.capitalize()
+            if role == "User":
+                role = custom_name  # Replace "User" with the custom name
+            content = msg.content[0].text.value
+            formatted_message = f"{role}: {content}"
+            formatted_messages.append(formatted_message)
+        return formatted_messages
+
