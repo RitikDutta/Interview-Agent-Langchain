@@ -4,8 +4,8 @@ from flask import Flask, render_template, request, redirect, url_for, flash, ses
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from database.user_manager import UserManager
 # from database.firestoreCRUD import FirestoreCRUD
-from firebase_admin import credentials, firestore
-import firebase_admin
+# from firebase_admin import credentials, firestore
+# import firebase_admin
 
 app = Flask(__name__)
 
@@ -32,7 +32,6 @@ login_manager.login_view = 'please_login'
 users = {'user@example.com': {'password': '123456'}}
 
 def add_init_user(user_id='x', name='y', email='z'):
-    
     user_manager = UserManager()
     user_manager.initialize_user(user_id, name, email)
 
@@ -70,10 +69,24 @@ def login():
         return redirect(url_for('profile'))
     return render_template('login.html', ids = 'random_ID')
 
-@app.route('/profile')
+
+
+@app.route('/profile', methods=['GET', 'POST'])
 @login_required
 def profile():
-    return render_template('index.html', user=current_user, name=session.get('name'))
+    assistant = DataScienceInterviewAssistant(instruction="Your instruction here", current_user=current_user.id)
+    
+    if request.method == 'POST':
+        question = request.form.get('question')
+        responses, score = assistant.conduct_interview(question)
+    else:
+        score = None  # Define score as None for GET requests
+
+    # Fetch the thread history for both GET and POST requests
+    thread_id = assistant.get_thread_id()  # Make sure this gets the correct thread ID
+    responses = assistant.get_messages(session.get('name'))
+    
+    return render_template('index.html', responses=responses, score=score, name=session.get('name'))
 
 @app.route('/logout')
 @login_required
