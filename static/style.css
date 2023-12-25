@@ -1,10 +1,32 @@
+@import url('https://fonts.googleapis.com/css2?family=Rubik+Doodle+Shadow&display=swap');
 body {
     font-family: Arial, sans-serif;
     background-color: #f4f4f4;
     margin: 0;
     padding: 0;
+    background-color: #1385b9;
 }
 
+.bg_img{
+    background-image: url('/static/jobin.jpg');
+    background-size: cover;
+    background-repeat: no-repeat;
+    background-attachment: fixed;
+    background-size: 100% auto;
+    background-color: #1385b9;
+
+}
+
+.login_button{
+    font-family: Rubik Doodle Shadow;
+    font-size: 10em;
+    position: absolute;
+    top: 33%;
+    bottom: 5%;
+    left: 45%;
+    right: 5%;
+    color: white;
+}
 .container {
     width: 80%;
     margin: auto;
