@@ -11,13 +11,17 @@
         <input type="submit" value="Submit">
     </form>
 
-    {% if responses %}
-        <h1>Responses</h1>
-        {% for response in responses %}
-            <p>{{ response.role }}: {{ response.content }}</p>
-        {% endfor %}
+{% if responses %}
+    <h1>Responses</h1>
+    {% for response in responses %}
+        <p>{{ response }}</p>
+    {% endfor %}
+    {% if score %}
         <h2>Score: {{ score }}</h2>
     {% endif %}
+{% endif %}
+
+    
 
 
     <a href="{{ url_for('logout') }}">Logout</a>

@@ -1,6 +1,16 @@
-{% extends 'base.html' %}
+<!DOCTYPE html>
+<html>
+<head>
+	<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1" />
+	<title></title>
+</head>
+<body class='bg_img'>
+	{% block content %}
+	<h1 >Personal Mentor</h1>
+	<a href="{{ url_for('login') }}" class="login_button">Login</a>
+	{% endblock %}	
+</body>
+</html>
 
-{% block content %}
-<h1>Welcome to the Home Page</h1>
-<a href="{{ url_for('login') }}">Login</a>
-{% endblock %}
