@@ -79,6 +79,7 @@ def profile():
     if request.method == 'POST':
         question = request.form.get('question')
         responses, score = assistant.conduct_interview(question)
+        return redirect(url_for('profile'))  
     else:
         score = None  # Define score as None for GET requests
 

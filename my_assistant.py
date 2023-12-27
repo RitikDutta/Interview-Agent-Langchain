@@ -13,43 +13,52 @@ class DataScienceInterviewAssistant:
     def __init__(self, instruction, current_user):
             self.current_user = current_user
             self.client = openai.OpenAI()
-            self.assistant = self.client.beta.assistants.create(
-                name="Data Science Interview Assistant",
-                instructions=instruction,
-                model="gpt-3.5-turbo-1106",
-            )
-            self.thread = self.client.beta.threads.create()
-            print(f"Thread created with ID: {self.thread.id}")
+            # self.assistant = self.client.beta.assistants.create(
+            #     name="Data Science Interview Assistant",
+            #     instructions=instruction,
+            #     model="gpt-3.5-turbo-1106",
+            # )
+            # self.thread = self.client.beta.threads.create()
+            # print(f"Thread created with ID: {self.thread_id}")
             self.usermanager = UserManager()
             print("aaaaaaaaaaaaaaaaaaaa" ,self.usermanager.get_assistant_id(str(current_user)))
             print("CURRENT", str(current_user))
             
-            # print_thread_conversation(self.thread.id)
+            # print_thread_conversation(self.thread_id)
             if self.usermanager.get_assistant_id(str(current_user)) and self.usermanager.get_thread_id(str(current_user)) != None:
                 print("TRUE")
-                self.assistant.id = self.usermanager.get_assistant_id(str(current_user))
-                self.thread.id = self.usermanager.get_thread_id(str(current_user))
+                self.assistant_id = self.usermanager.get_assistant_id(str(current_user))
+                self.thread_id = self.usermanager.get_thread_id(str(current_user))
 
 
             else:
+                self.assistant = self.client.beta.assistants.create(
+                    name="Data Science Interview Assistant",
+                    instructions=instruction,
+                    model="gpt-3.5-turbo-1106",
+                )
+                self.thread = self.client.beta.threads.create()
+                
+                self.assistant_id = self.assistant.id
+                self.thread_id = self.thread.id
                 self.usermanager.add_assistant_id(str(current_user), str(self.assistant.id))
-                self.usermanager.add_thread_id(str(current_user), str(self.thread.id))
+                self.usermanager.add_thread_id(str(current_user), str(self.thread_id))
 
 
     def conduct_interview(self, question):
-        thread = self.thread
-        print(f"Thread created with ID: {thread.id}")  # Print the thread ID
+        thread_id = self.thread_id
+        print(f"Thread created with ID: {thread_id}")  # Print the thread ID
         
         # init user 
         # self.client.beta.threads.messages.create(
-        #     thread_id=thread.id,thread.id
+        #     thread_id=thread_id,thread_id
         #     role="user",
         #     content="Hey"
         # )
 
         # user
         self.client.beta.threads.messages.create(
-            thread_id=thread.id,
+            thread_id=thread_id,
             role="user",
             content=question,
         )
@@ -92,23 +101,23 @@ make that text in structured json format exactly like this
 """
         
         run = self.client.beta.threads.runs.create(
-            thread_id=thread.id,
-            assistant_id=self.assistant.id,
+            thread_id=thread_id,
+            assistant_id=self.assistant_id,
             instructions=instruction2
         )
 
         while True:
             time.sleep(5)
             run_status = self.client.beta.threads.runs.retrieve(
-                thread_id=thread.id,
+                thread_id=thread_id,
                 run_id=run.id
             )
 
             if run_status.status == 'completed':
                 messages = self.client.beta.threads.messages.list(
-                    thread_id=thread.id
+                    thread_id=thread_id
                 )
-                print(messages.data)
+                # print(messages.data)
                 interview_responses = []
                 for msg in messages.data:
                     role = msg.role
@@ -137,7 +146,7 @@ make that text in structured json format exactly like this
             print(f"{msg.role.capitalize()}: {msg.content[0].text.value}")
 
     def get_thread_id(self):
-        return self.thread
+        return self.thread_id
 
     def get_messages(self, custom_name):
         thread_id = self.usermanager.get_thread_id(str(self.current_user))
