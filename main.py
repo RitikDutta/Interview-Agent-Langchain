@@ -45,7 +45,7 @@ def load_user(user_id):
     return User(user_id)
 
 @app.route('/interview')
-def interview():
+def home():
     return render_template('home.html')
 
 @app.route('/')
