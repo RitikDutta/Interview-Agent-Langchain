@@ -44,9 +44,13 @@ class User(UserMixin):
 def load_user(user_id):
     return User(user_id)
 
-@app.route('/')
-def home():
+@app.route('/interview')
+def interview():
     return render_template('home.html')
+
+@app.route('/')
+def mainp():
+    return render_template('main.html')
 
 @app.route('/login', methods=['GET', 'POST'])
 
