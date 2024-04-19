@@ -1,0 +1,50 @@
+Expertise in developing and implementing computer vision models for object detection, face recognition, and image classification.
+Proficient in utilizing advanced deep learning frameworks such as TensorFlow and PyTorch for model development and training.
+Skilled in deploying models into production environments, leveraging Flask for robust web application deployment.
+Experienced in managing large-scale NoSQL databases for efficient data storage and retrieval.
+Collaborative team player, working closely with engineers and data scientists to integrate computer vision models into comprehensive machine learning pipelines.
+Competent in deploying machine learning solutions on cloud platforms including Amazon Web Services and Google Cloud Platform.
+Developed and maintained CI/CD pipelines for seamless testing and deployment of computer vision models.
+In my role at Ineuron, I have cultivated a diverse skill set in the realms of computer vision and machine learning, encompassing all stages from model conceptualization to deployment.
+
+
+
+
+
+Hello, I'm Ritik Dutta, a passionate IT professional with a Bachelor’s degree in Computer Science and a Master’s diploma in Full Stack Data Science from iNeuron. Since the age of 13, I've been on a clear path towards the IT domain, exploring various fields including game design, cyber security, app development, operating systems, IoT, and web development. Over the past 5-6 years, I've focused on data science, Additionally, I embarked on my certification journey in machine learning from reputable platforms early on, approximately 5-6 years ago, this will ensure my longstanding commitment and early initiation into the field of data science..
+
+In my professional career, I've accumulated 1.5 years of experience working at iNeuron as a Computer Vision Engineer and Full Stack Data Scientist
+
+My work includes dissecting complex deep learning models. I've lead in advanced projects involving computer vision, NLP, and notably, automating a backend ETL pipeline that streamlined data processing workflows. My technical expertise also covers backend areas like CI/CD pipelines, app deployment, login authentication management, databases, and code management with agile workflow.
+
+Beyond my professional pursuits, I'm deeply committed to social welfare. I volunteer in feeding and teaching underprivileged children, supporting their families in my city. My ultimate goal in my life is to leverage my full-stack technical skills to develop applications that benefit the public and support crucial sectors like government, defense, and the army.
+
+
+
+Ritik Dutta
+IT professional
+Bachelor’s in Computer Science
+Master’s in Full Stack Data Science
+iNeuron
+Started at 13
+Game design, Cybersecurity, App development, Operating systems, IoT, Web development
+Data science focus
+Machine learning certifications
+1.5 years experience
+Computer Vision Engineer
+Full Stack Data Scientist
+LeNet, AlexNet articles
+Analytics Vidhya
+Computer vision, NLP
+Backend ETL pipeline automation
+CI/CD pipelines, App deployment, Login authentication, Databases, Code management
+Volunteering
+Feeding, Teaching underprivileged children
+Applications for public benefit
+Government, Defense, Army support
+
+
+
+
+
+
