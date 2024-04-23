@@ -18,7 +18,9 @@ class UserManager:
             # User does not exist, so create new user
             details = {'name': name, 'email': email}
             performance = {}  # Initialize performance data, if any
-            user_data = {'details': details, 'performance': performance}
+            chat = {}
+            
+            user_data = {'details': details, 'performance': performance, 'chat': chat}
             self.firestore_crud.create_document(user_id, user_data)
 
 
@@ -65,3 +67,17 @@ class UserManager:
         if user_data and 'performance' in user_data:
             return user_data['performance'].get('score')
         return None
+    
+    def add_or_update_chat(self, user_id, chat):
+        # add or remove on user chat data
+        user_data = self.firestore_crud.read_document(user_id)
+        if user_data and 'chat' in user_data:
+            user_data['chat']['chat'] = chat
+            self.firestore_crud.update_document(user_id, user_data)
+    
+    def get_chat(self, user_id):
+        user_data = self.firestore_crud.read_document(user_id)
+        if user_data and 'chat' in user_data:
+            return user_data['chat'].get('chat')
+        return None
+    
