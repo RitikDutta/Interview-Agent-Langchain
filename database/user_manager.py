@@ -71,7 +71,7 @@ class UserManager:
     def add_or_update_chat(self, user_id, chat):
         # add or remove on user chat data
         user_data = self.firestore_crud.read_document(user_id)
-        if user_data and 'chat' in user_data:
+        if user_data:
             user_data['chat']['chat'] = chat
             self.firestore_crud.update_document(user_id, user_data)
     
