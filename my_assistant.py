@@ -21,8 +21,8 @@ class DataScienceInterviewAssistant:
             # self.thread = self.client.beta.threads.create()
             # print(f"Thread created with ID: {self.thread_id}")
             self.usermanager = UserManager()
-            print("aaaaaaaaaaaaaaaaaaaa" ,self.usermanager.get_assistant_id(str(current_user)))
-            print("CURRENT", str(current_user))
+            print("ASSISTANT id = " ,self.usermanager.get_assistant_id(str(current_user)))
+            print("CURRENT USER = ", str(current_user))
             
             # print_thread_conversation(self.thread_id)
             if self.usermanager.get_assistant_id(str(current_user)) and self.usermanager.get_thread_id(str(current_user)) != None:
@@ -147,6 +147,7 @@ class DataScienceInterviewAssistant:
     def get_messages(self, custom_name):
         thread_id = self.usermanager.get_thread_id(str(self.current_user))
         # Retrieve messages from a specific thread
+        # message stored in thread here
         messages = self.client.beta.threads.messages.list(thread_id=thread_id)
         formatted_messages = []
         for msg in messages.data:
@@ -156,5 +157,6 @@ class DataScienceInterviewAssistant:
             content = msg.content[0].text.value
             formatted_message = f"{role}: {content}"
             formatted_messages.append(formatted_message)
+            # formatted_messages = ['Assistant: hello', 'Random Guy: hihi']
         return formatted_messages
 
