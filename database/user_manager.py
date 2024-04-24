@@ -73,20 +73,15 @@ class UserManager:
         user_data = self.firestore_crud.read_document(user_id)
 
         if user_data:
-            # Check if the 'chat' key exists and has an inner 'chat' list
-            if 'chat' in user_data and 'chat' in user_data['chat']:
-                # Append new chat messages to existing chat history
-                user_data['chat']['chat'].extend(new_chat)
-            else:
-                # Create new chat structure if not present
-                user_data['chat'] = {'chat': new_chat}
-
-            # Update the document in Firestore with the updated chat data
+            # Replace the 'chat' key with the new chat data, regardless of previous content
+            user_data['chat'] = {'chat': new_chat}
+            # Update the document in Firestore with the new chat data
             self.firestore_crud.update_document(user_id, user_data)
         else:
-            # If no existing data, create new entry
+            # If no existing data, create new entry with the new chat
             user_data = {'chat': {'chat': new_chat}}
             self.firestore_crud.create_document(user_id, user_data)
+
 
 
     
