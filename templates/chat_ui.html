@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interview Chatbot</title>
+
+    <style type="text/css">
+    body, h1, h2, p, textarea, button {
+        font-family: Arial, sans-serif;
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+    }
+
+    .container {
+        border: 1px solid #ccc;
+        border-radius: 10px;
+        padding: 20px;
+        margin: 20px auto;
+        width: 80%; /* Adjusted for better responsiveness */
+        background-color: #fff;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.1); /* Subtle shadow for depth */
+    }
+
+    .question, .user-response, .feedback {
+        text-align: center;
+        margin: 20px 0; /* Uniform margin for vertical rhythm */
+    }
+
+    .question {
+        font-weight: bold;
+        font-size: 1.5em; /* Larger text for questions */
+    }
+
+    textarea {
+        width: calc(100% - 20px); /* Full width minus padding */
+        height: 100px;
+        padding: 10px;
+        margin-bottom: 20px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        resize: none; /* Disable resizing */
+    }
+
+    .buttons {
+        display: flex;
+        justify-content: space-between;
+    }
+
+    button, input[type="submit"] {
+        padding: 10px 20px;
+        cursor: pointer;
+        background-color: #007bff;
+        color: #fff;
+        border: none;
+        border-radius: 5px;
+        font-size: 1em;
+    }
+
+    input[type="submit"] {
+        background-color: #28a745; /* Different color for submit */
+    }
+
+    .score-next-container {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-top: 20px; /* Space above score container */
+    }
+
+    .score-bar-base {
+        width: 150px;
+        height: 20px;
+        background-color: #e0e0e0;
+        border-radius: 5px;
+        overflow: hidden;
+    }
+
+    .score-bar {
+        height: 100%;
+        background-color: #4CAF50; /* Green for positive reinforcement */
+        width: 0; /* Set dynamically via inline style */
+        border-radius: 5px 0 0 5px;
+    }
+
+    .score-text {
+        margin-left: 15px;
+    }
+
+
+
+
+
+    .button_r {
+            background-color: grey; /* Default color */
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        .button_r.recording {
+            background-color: green;
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+</style>
+
+</head>
+<body>
+    
+
+{% block content %}
+<div id="chat-container">
+    <!-- Initial Stage -->
+    <div id="initial-stage" class="container" style="{{ 'display: none;' if show_feedback else 'display: block;' }}">
+        <button id="speak_button" onclick='speak(document.getElementById("text-to-speak").textContent)''>Speak</button>
+        <h1 id="text-to-speak" class="question">{{ responses.next_question }}</h1>
+        <form method="post" id="response-form">
+            <textarea id="question" name="question" placeholder="Type your response..."></textarea>
+            <div class="buttons">
+                <button type="button" id="upload-btn" onclick="uploadCV()">Upload CV</button>
+                <button type="button" id="toggle-btn" class="button_r">Voice</button>
+                <input type="submit" id="submit-btn" value="Submit">
+            </div>
+        </form>
+    </div>
+
+    <!-- After User Response - Feedback and Score -->
+    <div id="feedback-stage" class="container" style="{{ 'display: block;' if show_feedback else 'display: none;' }}">
+        <p class="user-response">{{responses.user_response}}</p>
+        <h2 id="feedback_speak" class="feedback">{{responses.feedback}}</h2>
+        <div class="score-next-container">
+            <div class="score-container">
+                <div class="score-bar-base">
+                    <div class="score-bar" style="width: {{responses.score}}0%;"></div>
+                </div>
+                <span class="score-text">{{responses.score}}/10</span>
+            </div>
+            <!-- Added data-next-question attribute to hold the next question -->
+            <button id="next-btn" data-next-question="{{ responses.next_question }}" onclick="nextQuestion(); clearForm(); speak(document.getElementById('text-to-speak').textContent)">Next</button>
+        </div>
+    </div>
+
+</div>
+
+<!-- speech recognition -->
+<script>
+        let toggleBtn = document.getElementById("toggle-btn");
+        let textarea = document.getElementById("question");
+        let isRecording = false;
+        let speechRecognition = window.webkitSpeechRecognition || window.SpeechRecognition;
+        let recognizer = new speechRecognition();
+        
+        recognizer.lang = "en-US";
+        recognizer.continuous = true;
+        recognizer.interimResults = true;
+
+        toggleBtn.addEventListener("click", function() {
+            if (!isRecording) {
+                recognizer.start();
+                toggleBtn.textContent = "Listening";
+                toggleBtn.classList.add("recording");
+            } else {
+                recognizer.stop();
+                toggleBtn.textContent = "Not Listening";
+                toggleBtn.classList.remove("recording");
+            }
+            isRecording = !isRecording;
+        });
+
+        recognizer.onresult = function(event) {
+            let results = event.results;
+            let transcript = Array.from(results)
+                .map(result => result[0].transcript)
+                .join('');
+            textarea.value = transcript;
+        };
+
+        recognizer.onerror = function(event) {
+            console.error("Speech recognition error", event.error);
+        };
+    </script>
+
+<script>
+
+function clearForm() {
+    // Select the form by its ID
+    var form = document.getElementById('response-form');
+    
+    // Reset the form
+    form.reset();
+
+    // Additional cleanup if needed
+    // For example, if you have any custom handling or want to reset hidden inputs or specific default values
+    document.getElementById('question').value = ''; // Clear the textarea explicitly if reset() is not enough
+
+    // You could also clear any dynamic text or selections on the form, such as error messages or feedback
+    document.querySelector('.feedback').textContent = ''; // Clear feedback text
+    document.querySelector('.user-response').textContent = ''; // Clear user response text
+    document.querySelector('.score-text').textContent = ''; // Clear score text
+    var scoreBar = document.querySelector('.score-bar');
+    if (scoreBar) {
+        scoreBar.style.width = '0%'; // Reset the score bar width
+    }
+}
+
+
+
+
+function uploadCV() {
+    alert("Upload functionality not implemented yet.");
+}
+
+function nextQuestion() {
+    location.reload(); // Reloads the page to fetch the next question from the server.
+}
+
+// You don't actually need these JavaScript functions if you are handling form submission normally
+// The page will automatically reload on form submission and show the next question or feedback based on Flask's rendering
+
+function nextQuestion() {
+    // Retrieve the next question from the data attribute of the Next button
+    var nextQuestion = document.getElementById('next-btn').getAttribute('data-next-question');
+
+    // Update the initial stage with the new question
+    document.querySelector('#initial-stage .question').textContent = nextQuestion;
+
+    // Toggle visibility to show the initial stage and hide the feedback stage
+    document.getElementById('feedback-stage').style.display = 'none';
+    document.getElementById('initial-stage').style.display = 'block';
+
+    // Clear any previous responses in the textarea to get ready for new input
+    document.getElementById('question').value = '';
+}
+
+</script>
+
+
+
+
+
+<!-- text to speech -->
+
+<script>
+    const textArea = document.getElementById('text-to-speak');
+    const voiceSelect = document.getElementById('voice-selection');
+    let voices = [];
+
+    function populateVoiceList() {
+        voices = speechSynthesis.getVoices();
+        voiceSelect.innerHTML = '<option value="">Select a voice</option>';
+        voices.forEach(voice => {
+            const option = new Option(voice.name + ' (' + voice.lang + ')', voice.name);
+            voiceSelect.appendChild(option);
+        });
+    }
+
+    if (typeof speechSynthesis !== 'undefined' && speechSynthesis.onvoiceschanged !== undefined) {
+        speechSynthesis.onvoiceschanged = populateVoiceList;
+    }
+
+    populateVoiceList(); // Populate voices on load
+
+    function chunkSubstr(str, size) {
+        const chunks = [];
+        let currentChunk = '';
+
+        // Split text by periods to preserve sentence boundaries
+        str.split('.').forEach(sentence => {
+            if (currentChunk.length + sentence.length > size) {
+                if (currentChunk.length > 0) {
+                    chunks.push(currentChunk + '.');
+                    currentChunk = '';
+                }
+                // Further split long sentences if necessary
+                while (sentence.length > size) {
+                    const cut = sentence.substring(0, size).lastIndexOf(' ');
+                    const segment = sentence.substring(0, cut);
+                    chunks.push(segment);
+                    sentence = sentence.substring(cut + 1);
+                }
+                currentChunk = sentence;
+            } else {
+                currentChunk += (currentChunk.length > 0 ? ' ' : '') + sentence;
+            }
+        });
+
+        if (currentChunk.length > 0) {
+            chunks.push(currentChunk + '.');
+        }
+
+        return chunks;
+    }
+
+    function speakTextByChunks(textChunks, index = 0) {
+        if (index < textChunks.length) {
+            const chunk = textChunks[index];
+            const utterance = new SpeechSynthesisUtterance(chunk);
+            const selectedVoiceName = 'Google US English';
+            console.log(selectedVoiceName)
+
+            utterance.voice = voices.find(voice => voice.name === selectedVoiceName);
+
+            utterance.onend = () => {
+                console.log("Chunk finished speaking");
+                speakTextByChunks(textChunks, index + 1);
+            };
+
+            utterance.onerror = (event) => {
+                console.error("SpeechSynthesisUtterance encountered an error:", event.error);
+            };
+
+            speechSynthesis.speak(utterance);
+        }
+    }
+
+    function speak(text) {
+        if (speechSynthesis.speaking) {
+            speechSynthesis.cancel(); // Cancel any ongoing speeches
+        }
+
+        if (text !== '') {
+            const textChunks = chunkSubstr(text, 200); // Adjust chunk size as needed
+            speakTextByChunks(textChunks);
+        }
+    }
+
+
+ 
+</script>
+
+
+
+    <script type="text/javascript">
+        document.addEventListener("DOMContentLoaded", function() {
+            setTimeout(function() {
+                console.log(document.getElementById('text-to-speak').textContent);
+                // document.getElementById("speak_button").click()
+                speak(document.getElementById("feedback_speak").textContent);   
+
+            }, 3000); // 2000 milliseconds = 2 seconds
+        });
+
+    </script>
+
+{% endblock %}
+
+
+</body>
+</html>
