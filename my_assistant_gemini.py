@@ -40,33 +40,30 @@ class DataScienceInterviewAssistant:
 
     def conduct_interview(self, question):
         response = self.chat.send_message(question)
-        print(response.text)
-        self.msg = response.text
-        print("RESPONSE: ", response.text)
-        print("before conversion: ", self.get_history())
+        # print("JSON", self.convert_json_string_to_dict(response.text))
         chat = self.convert_format(self.get_history())
-        print("after conversion: ", chat)
         self.get_history()
-        print("current user = ", self.current_user)
         self.usermanager.add_or_update_chat(self.current_user, chat)
-        print("RRRRRRRRRRRRRRRRRRRRRRRRR", self.reconstruct_format(chat))
         return "hioiiiiiiasdiaid", 9
 
     def get_history(self):
-        print(self.chat.history)
         return self.chat.history
 
     def get_thread_id(self):
         return '123456789'
     
     def get_messages(self, custom_name):
-        # hard coding
         chat = self.usermanager.get_chat(self.current_user)
         if chat:
-            chat = chat[::-1]
-        print("CHATTTTT: ", chat)
-        
-        return chat 
+            chat = chat[::-1]  # Reverse the chat list
+
+        # We need to modify the chat list with replaced text
+        for index in range(len(chat)):
+            # Replace "User" with "xyz" and update the list at the same position
+            chat[index] = chat[index].replace("User", custom_name)
+            # print("MESSAGE: ", chat[index])  # Print the updated message
+
+        return chat
 
 
          
@@ -99,7 +96,7 @@ class DataScienceInterviewAssistant:
                         json_obj = json.loads(json_str)
                         text = f"```json\n{json.dumps(json_obj, indent=2)}\n``` \n"
                     except json.JSONDecodeError:
-                        print("Error decoding JSON from message.")
+                        pass
                 part = {"text": text}
             else:
                 continue
@@ -111,12 +108,19 @@ class DataScienceInterviewAssistant:
             data.append(entry)
         return data
 
+    def convert_json_string_to_dict(self, json_string):
+        # We only need to remove from start and end not to replace from the main message
+        start_delimiter = "```json"
+        end_delimiter = "```"
+        start_index = json_string.find(start_delimiter) + len(start_delimiter)
+        end_index = json_string.rfind(end_delimiter)
+        
+        if start_index > -1 and end_index > -1:
+            # Extract the JSON content from between the delimiters
+            json_string = json_string[start_index:end_index].strip()
 
-    
-
-
-if __name__ == "__main__":
-    ds = DataScienceInterviewAssistant()
-    ds.get_models()
-    ds.init_chat()
-    ds.get_history()
+        try:
+            return json.loads(json_string)
+        except json.JSONDecodeError as e:
+            print(f"Failed to decode JSON: {e}")
+            return None
