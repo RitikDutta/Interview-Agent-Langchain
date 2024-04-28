@@ -93,6 +93,47 @@ def profile():
     
     return render_template('index.html', responses=responses, score=score, name=session.get('name'))
 
+@app.route('/dashboard', methods=['GET', 'POST'])
+@login_required
+def dashboard():
+    return render_template("dashboard.html")
+
+# @app.route('/livec', methods=['GET', 'POST'])
+# def livec():
+
+#     if request.method == 'POST':
+#         print("RESPONSE WEB: ", request.form.get('question'))
+#         return redirect(url_for('livec'))  
+
+#     response = {
+#         'question': "What is your greatest strength?",
+#         'user_response': "I am highly organized.",
+#         'feedback': "Your organizational skills are a strong point.",
+#         'score': 2
+#     }
+    
+#     responses = [response]
+    
+#     return render_template('chat_ui.html', responses=responses, name=session.get('name'))
+
+@app.route('/livec', methods=['GET', 'POST'])
+def livec():
+    assistant = DataScienceInterviewAssistant(instruction="Your instruction here", current_user=current_user.id)
+    
+    show_feedback = False  # Flag to control UI display
+
+    if request.method == 'POST':
+        question = request.form.get('question')
+        responses, score = assistant.conduct_interview(question)
+        show_feedback = True  # Set true if feedback needs to be shown
+
+    responses = assistant.get_messages(session.get('name'))
+    response_last = assistant.convert_json_string_to_dict(responses[0])
+
+    return render_template('chat_ui.html', responses=response_last, show_feedback=show_feedback, name=session.get('name'))
+
+
+
 @app.route('/logout')
 @login_required
 def logout():
