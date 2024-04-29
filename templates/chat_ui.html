@@ -7,112 +7,122 @@
 
     <style type="text/css">
     body, h1, h2, p, textarea, button {
-        font-family: Arial, sans-serif;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; /* Modern font */
         margin: 0;
         padding: 0;
         box-sizing: border-box;
+        color: #333; /* Softer color for text */
     }
 
     .container {
-        border: 1px solid #ccc;
-        border-radius: 10px;
+        border: 1px solid #d1d1d1; /* Lighter border color */
+        border-radius: 12px; /* Slightly larger radius for softer edges */
         padding: 20px;
         margin: 20px auto;
         width: 80%; /* Adjusted for better responsiveness */
-        background-color: #fff;
-        box-shadow: 0 2px 5px rgba(0,0,0,0.1); /* Subtle shadow for depth */
+        background-color: #f7f7f7; /* Lighter background for a fresher look */
+        box-shadow: 0 4px 8px rgba(0,0,0,0.05); /* Subtle shadow for depth */
+        position: relative; /* Needed for absolute positioning elements inside */
     }
 
     .question, .user-response, .feedback {
         text-align: center;
-        margin: 20px 0; /* Uniform margin for vertical rhythm */
+        margin-top: 20px;
+        margin-bottom: 20px; /* Increased spacing for clarity */
     }
 
     .question {
-        font-weight: bold;
-        font-size: 1.5em; /* Larger text for questions */
+        font-weight: 600; /* Bolder for emphasis */
+        font-size: 1.2em; /* Optimal size for readability */
     }
 
     textarea {
-        width: calc(100% - 20px); /* Full width minus padding */
-        height: 100px;
-        padding: 10px;
+        width: calc(100% - 40px); /* Adjust width to account for padding */
+        height: 120px; /* Larger area for more text */
+        padding: 20px; /* More padding for comfort */
         margin-bottom: 20px;
-        border: 1px solid #ccc;
-        border-radius: 4px;
-        resize: none; /* Disable resizing */
+        border: 2px solid #ccc; /* Slightly thicker border */
+        border-radius: 8px;
+        resize: vertical; /* Allow only vertical resizing */
     }
 
     .buttons {
         display: flex;
-        justify-content: space-between;
+        justify-content: space-around; /* Better spacing between buttons */
+        padding: 10px 0; /* Padding for visual separation from text area */
     }
 
     button, input[type="submit"] {
         padding: 10px 20px;
         cursor: pointer;
-        background-color: #007bff;
+        background-color: #007bff; /* Consistent color scheme */
         color: #fff;
         border: none;
-        border-radius: 5px;
-        font-size: 1em;
+        border-radius: 6px; /* Slightly rounded for modern look */
+        transition: background-color 0.3s, box-shadow 0.3s;
     }
 
     input[type="submit"] {
-        background-color: #28a745; /* Different color for submit */
+        background-color: #28a745; /* Consistent color for submit */
+    }
+
+    button:hover, input[type="submit"]:hover {
+        background-color: #0056b3; /* Darker on hover for interaction */
+        box-shadow: 0 2px 10px rgba(0,0,0,0.2); /* Subtle shadow on hover */
     }
 
     .score-next-container {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-top: 20px; /* Space above score container */
+        margin-top: 20px;
     }
 
-    .score-bar-base {
-        width: 150px;
-        height: 20px;
-        background-color: #e0e0e0;
-        border-radius: 5px;
-        overflow: hidden;
-    }
+ .score-bar-base {
+    width: 150px;
+    height: 20px;
+    background-color: #e0e0e0;
+    border-radius: 5px;
+    overflow: hidden;
+}
 
-    .score-bar {
-        height: 100%;
-        background-color: #4CAF50; /* Green for positive reinforcement */
-        width: 0; /* Set dynamically via inline style */
-        border-radius: 5px 0 0 5px;
-    }
+.score-bar {
+    height: 100%;
+    background-color: #4CAF50;
+    width: 0;
+    border-radius: 5px 0 0 5px;
+    transition: width 2s cubic-bezier(0.78,-0.01, 0.24, 0.96); 
+}
+
+
 
     .score-text {
-        margin-left: 15px;
+        margin-left: 40%;
+        font-weight: bold;
     }
 
-
-
-
-
     .button_r {
-            background-color: grey; /* Default color */
-            color: white;
-            padding: 10px 20px;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            transition: background-color 0.3s ease;
-        }
+        background-color: grey;
+        color: white;
+        padding: 10px 20px;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        transition: background-color 0.3s ease;
+    }
 
-        .button_r.recording {
-            background-color: green;
-            animation: pulse 1.5s infinite;
-        }
+    .button_r.recording {
+        background-color: green;
+        animation: pulse 1.5s infinite;
+    }
 
-        @keyframes pulse {
-            0% { opacity: 1; }
-            50% { opacity: 0.5; }
-            100% { opacity: 1; }
-        }
+    @keyframes pulse {
+        0% { opacity: 1; }
+        50% { opacity: 0.5; }
+        100% { opacity: 1; }
+    }
 </style>
+
 
 </head>
 <body>
@@ -122,7 +132,7 @@
 <div id="chat-container">
     <!-- Initial Stage -->
     <div id="initial-stage" class="container" style="{{ 'display: none;' if show_feedback else 'display: block;' }}">
-        <button id="speak_button" onclick='speak(document.getElementById("text-to-speak").textContent)''>Speak</button>
+        <button id="speak_button" onclick='speak(document.getElementById("text-to-speak").textContent, false)''>Speak</button>
         <h1 id="text-to-speak" class="question">{{ responses.next_question }}</h1>
         <form method="post" id="response-form">
             <textarea id="question" name="question" placeholder="Type your response..."></textarea>
@@ -141,12 +151,11 @@
         <div class="score-next-container">
             <div class="score-container">
                 <div class="score-bar-base">
-                    <div class="score-bar" style="width: {{responses.score}}0%;"></div>
+                    <div class="score-bar" id="score-bar" style="width: 0%;"></div> <!-- Initial width set to 0 -->
                 </div>
-                <span class="score-text">{{responses.score}}/10</span>
+                <span class="score-text" id="score-text">Score</span>
             </div>
-            <!-- Added data-next-question attribute to hold the next question -->
-            <button id="next-btn" data-next-question="{{ responses.next_question }}" onclick="nextQuestion(); clearForm(); speak(document.getElementById('text-to-speak').textContent)">Next</button>
+            <button id="next-btn" data-next-question="{{ responses.next_question }}" onclick="nextQuestion(); clearForm(); speak(document.getElementById('text-to-speak').textContent, false)">Next</button>
         </div>
     </div>
 
@@ -251,6 +260,8 @@ function nextQuestion() {
 <!-- text to speech -->
 
 <script>
+    let speak_count = 0;
+    let is_score = true
     const textArea = document.getElementById('text-to-speak');
     const voiceSelect = document.getElementById('voice-selection');
     let voices = [];
@@ -274,14 +285,12 @@ function nextQuestion() {
         const chunks = [];
         let currentChunk = '';
 
-        // Split text by periods to preserve sentence boundaries
         str.split('.').forEach(sentence => {
             if (currentChunk.length + sentence.length > size) {
                 if (currentChunk.length > 0) {
                     chunks.push(currentChunk + '.');
                     currentChunk = '';
                 }
-                // Further split long sentences if necessary
                 while (sentence.length > size) {
                     const cut = sentence.substring(0, size).lastIndexOf(' ');
                     const segment = sentence.substring(0, cut);
@@ -302,17 +311,25 @@ function nextQuestion() {
     }
 
     function speakTextByChunks(textChunks, index = 0) {
+        var myvar = `{{responses.score}}`
         if (index < textChunks.length) {
             const chunk = textChunks[index];
             const utterance = new SpeechSynthesisUtterance(chunk);
             const selectedVoiceName = 'Google US English';
-            console.log(selectedVoiceName)
 
             utterance.voice = voices.find(voice => voice.name === selectedVoiceName);
 
             utterance.onend = () => {
                 console.log("Chunk finished speaking");
-                speakTextByChunks(textChunks, index + 1);
+                if (index + 1 < textChunks.length) {
+                    speakTextByChunks(textChunks, index + 1);
+                } else {
+                    console.log("All chunks finished speaking.");
+                    if (speak_count < 1 && is_score==true){
+                        animateScore({{responses.score}});
+                        speak_count = speak_count+1;
+                    }
+                }
             };
 
             utterance.onerror = (event) => {
@@ -323,7 +340,8 @@ function nextQuestion() {
         }
     }
 
-    function speak(text) {
+    function speak(text, is_score_=true) {
+        is_score = is_score_
         if (speechSynthesis.speaking) {
             speechSynthesis.cancel(); // Cancel any ongoing speeches
         }
@@ -334,9 +352,18 @@ function nextQuestion() {
         }
     }
 
+    function handleSpeech(text) {
+        console.log("Preparing to speak...");
+        speak(text);
+        console.log("Speech process initiated.");
+    }
 
- 
+    // Example of calling handleSpeech directly or via some user action
+    document.addEventListener('DOMContentLoaded', function() {
+        handleSpeech("Hello, this is a test message to demonstrate speech synthesis.");
+    });
 </script>
+
 
 
 
@@ -347,10 +374,42 @@ function nextQuestion() {
                 // document.getElementById("speak_button").click()
                 speak(document.getElementById("feedback_speak").textContent);   
 
-            }, 3000); // 2000 milliseconds = 2 seconds
+            }, 1000); // 2000 milliseconds = 2 seconds
         });
 
     </script>
+
+<script>
+function animateScore(score) {
+    const scoreBar = document.getElementById('score-bar');
+    const scoreText = document.getElementById('score-text');
+    let currentScore = 0;
+
+    const increment = 1; // Set increment to 1 for natural number increments
+    const duration = 2000; // Total duration of the animation in milliseconds
+    const steps = score; // Total steps are equal to the score value
+    const stepTime = duration / steps; // Time per step to finish in the same duration
+
+    // Start a timer to increment the score text
+    const scoreTimer = setInterval(() => {
+        currentScore += increment;
+        if (currentScore >= score) {
+            currentScore = score; // Cap the score to the maximum final value
+            clearInterval(scoreTimer); // Stop the timer when reaching the final score
+        }
+        scoreText.textContent = currentScore.toFixed(0) + '/10'; // Update the text display as whole number
+    }, stepTime);
+
+    // Animate the score bar width
+    setTimeout(() => {
+        scoreBar.style.width = (score * 10) + '%'; // Set width as a percentage of the score
+    }, 10);
+    speak(`i will give u ${score} out of 10`);
+}
+
+
+</script>
+
 
 {% endblock %}
 
