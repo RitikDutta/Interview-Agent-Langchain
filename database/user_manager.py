@@ -83,6 +83,8 @@ class UserManager:
             self.firestore_crud.create_document(user_id, user_data)
 
 
+    def add_or_update_settings(self):
+        pass
 
     
     def get_chat(self, user_id):
