@@ -164,7 +164,10 @@ def confirmation():
 
 
 def store_preference(interviewer, language):
+    user_manager = UserManager()
     print(f"Storing preferences: Interviewer - {interviewer}, Language - {language}")
+    user_manager.add_or_update_user_setting(user_id = current_user.id,interviewer=interviewer, language=language)
+    
 
 
 
