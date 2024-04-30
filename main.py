@@ -89,6 +89,7 @@ def profile():
 
     # Fetch the thread history for both GET and POST requests
     thread_id = assistant.get_thread_id()  # Make sure this gets the correct thread ID
+    
     responses = assistant.get_messages(session.get('name'))
     
     return render_template('index.html', responses=responses, score=score, name=session.get('name'))
@@ -117,7 +118,9 @@ def dashboard():
 #     return render_template('chat_ui.html', responses=responses, name=session.get('name'))
 
 @app.route('/livec', methods=['GET', 'POST'])
+@login_required
 def livec():
+    response_last=None
     assistant = DataScienceInterviewAssistant(instruction="Your instruction here", current_user=current_user.id)
     
     show_feedback = False  # Flag to control UI display
@@ -128,9 +131,41 @@ def livec():
         show_feedback = True  # Set true if feedback needs to be shown
 
     responses = assistant.get_messages(session.get('name'))
-    response_last = assistant.convert_json_string_to_dict(responses[0])
+    if responses:
+        response_last = assistant.convert_json_string_to_dict(responses[0])
 
     return render_template('chat_ui.html', responses=response_last, show_feedback=show_feedback, name=session.get('name'))
+
+
+
+@app.route('/settings', methods=['GET', 'POST'])
+def settings():
+    if request.method == 'POST':
+        choice = request.form.get('choice')
+        if 'type' not in session:
+            session['type'] = choice  # First choice (interviewer)
+            print(f"Interviewer selected: {choice}")
+            return redirect(url_for('settings'))
+        else:
+            # Store the second choice (language) and proceed to confirmation
+            session['language'] = choice
+            print(f"Language selected: {choice}")
+            store_preference(interviewer=session['type'], language=choice)
+            return redirect(url_for('confirmation'))
+
+    return render_template('settings.html')
+
+@app.route('/confirmation')
+def confirmation():
+    # Retrieve preferences from session
+    interviewer = session.pop('type', None)
+    language = session.pop('language', None)
+    return render_template('confirmation.html', interviewer=interviewer, language=language)
+
+
+def store_preference(interviewer, language):
+    print(f"Storing preferences: Interviewer - {interviewer}, Language - {language}")
+
 
 
 
