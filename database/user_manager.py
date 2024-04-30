@@ -17,10 +17,11 @@ class UserManager:
         if not user_data:
             # User does not exist, so create new user
             details = {'name': name, 'email': email}
-            performance = {}  # Initialize performance data, if any
+            performance = {}  
             chat = {}
+            preference={}
             
-            user_data = {'details': details, 'performance': performance, 'chat': chat}
+            user_data = {'details': details, 'performance': performance, 'chat': chat, 'preference': preference}
             self.firestore_crud.create_document(user_id, user_data)
 
 
@@ -83,8 +84,41 @@ class UserManager:
             self.firestore_crud.create_document(user_id, user_data)
 
 
-    def add_or_update_settings(self):
-        pass
+
+
+    def get_score(self, user_id):
+        # Retrieve the score for the given user_id
+        user_data = self.firestore_crud.read_document(user_id)
+        if user_data and 'performance' in user_data:
+            return user_data['performance'].get('score')
+        return None
+
+    def add_or_update_interviewer(self, user_id, interviewer):
+        user_data = self.firestore_crud.read_document(user_id)
+        if user_data:
+            user_data['preference']['interviewer'] = interviewer
+            self.firestore_crud.update_document(user_id, user_data)
+    def add_or_update_language(self, user_id, language):
+        user_data = self.firestore_crud.read_document(user_id)
+        if user_data:
+            user_data['preference']['language'] = language
+            self.firestore_crud.update_document(user_id, user_data)
+    def get_interviewer(self, user_id):
+        # Retrieve the score for the given user_id
+        user_data = self.firestore_crud.read_document(user_id)
+        if user_data and 'preference' in user_data:
+            return user_data['preference'].get('interviewer')
+        return None
+    def get_language(self, user_id):
+        # Retrieve the score for the given user_id
+        user_data = self.firestore_crud.read_document(user_id)
+        if user_data and 'preference' in user_data:
+            return user_data['preference'].get('language')
+        return None
+    
+    def add_or_update_user_setting(self, user_id, interviewer, language):
+        self.add_or_update_interviewer(user_id, interviewer=interviewer)
+        self.add_or_update_language(user_id, language=language)
 
     
     def get_chat(self, user_id):
