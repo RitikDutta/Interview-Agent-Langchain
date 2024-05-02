@@ -164,22 +164,20 @@ def livec():
         file = request.files.get('cv')
         if file and file.filename:
             filename = secure_filename(file.filename)
-            # file.save(os.path.join('path/to/save/files', filename))
             print("File uploaded and saved: ", filename)
-            # Assuming the file's path or name is used in the interview
             responses, score = assistant.conduct_interview(filename)
             
             show_feedback = True
         elif 'question' in request.form:
-            question = request.form.get('question')
+            question = request.form['question']
             responses, score = assistant.conduct_interview(question)
             show_feedback = True
 
-        responses = assistant.get_messages(session.get('name'))
-        if responses:
-            response_last = assistant.convert_json_string_to_dict(responses[0])
-            if response_last['feedback'] =="":
-                show_feedback = False
+    responses = assistant.get_messages(session.get('name'))
+    if responses:
+        response_last = assistant.convert_json_string_to_dict(responses[0])
+        if response_last['feedback'] =="":
+            show_feedback = False
     return render_template('chat_ui.html', responses=response_last, show_feedback=show_feedback, name=session.get('name'), preference=preference)
 
 
