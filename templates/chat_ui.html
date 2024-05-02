@@ -161,6 +161,12 @@
 
 </div>
 
+<script>
+    console.log(`{{preference.language}}`)
+    console.log(`{{preference.interviewer}}`)
+
+</script>
+
 <!-- speech recognition -->
 <script>
         let toggleBtn = document.getElementById("toggle-btn");
@@ -168,8 +174,14 @@
         let isRecording = false;
         let speechRecognition = window.webkitSpeechRecognition || window.SpeechRecognition;
         let recognizer = new speechRecognition();
-        
         recognizer.lang = "en-US";
+
+        if (`{{preference.language}}`=='English'){
+            recognizer.lang = "en-US";
+        }
+        else if (`{{preference.language}}`=='Hindi'){
+            recognizer.lang = "hi";
+        }
         recognizer.continuous = true;
         recognizer.interimResults = true;
 
@@ -315,7 +327,23 @@ function nextQuestion() {
         if (index < textChunks.length) {
             const chunk = textChunks[index];
             const utterance = new SpeechSynthesisUtterance(chunk);
-            const selectedVoiceName = 'Google US English';
+            let selectedVoiceName = 'Google US English';
+            if (`{{preference.interviewer}}`=='Ritik'){
+                if (`{{preference.language}}==English`) {
+                    selectedVoiceName = 'Google UK English Male';
+                }
+                else if (`{{preference.language}}`=='Hindi'){
+                    selectedVoiceName = 'Google UK English Male';
+                }
+            }
+            else if (`{{preference.interviewer}}`=='Nisha'){
+                if (`{{preference.language}}==English`) {
+                    selectedVoiceName = 'Google हिन्दी';
+                }
+                else if (`{{preference.language}}`=='Hindi'){
+                    selectedVoiceName = 'Google हिन्दी';
+                }
+            }
 
             utterance.voice = voices.find(voice => voice.name === selectedVoiceName);
 
