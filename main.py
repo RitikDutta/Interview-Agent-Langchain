@@ -6,7 +6,10 @@ from database.user_manager import UserManager
 # from database.firestoreCRUD import FirestoreCRUD
 # from firebase_admin import credentials, firestore
 # import firebase_admin
-
+from werkzeug.utils import secure_filename
+import os
+from pathlib import Path
+import hashlib
 app = Flask(__name__)
 
 # @app.route('/', methods=['GET', 'POST'])
@@ -39,6 +42,20 @@ def get_user_preference(user_id):
     user_manager = UserManager()
     preference = user_manager.get_user_setting(current_user.id)
     return preference
+
+
+uploaded_files = []
+def upload_if_needed(pathname: str) -> list[str]:
+  path = Path(pathname)
+  hash_id = hashlib.sha256(path.read_bytes()).hexdigest()
+  try:
+    existing_file = genai.get_file(name=hash_id)
+    return [existing_file.uri]
+  except:
+    pass
+  uploaded_files.append(genai.upload_file(path=path, display_name=hash_id))
+  return [uploaded_files[-1].uri]
+
 
 class User(UserMixin):
     def __init__(self, email):
@@ -134,23 +151,35 @@ def dashboard():
 @app.route('/livec', methods=['GET', 'POST'])
 @login_required
 def livec():
-    response_last=None
+    response_last = None
     preference = get_user_preference(current_user.id)
     if preference['language'] == 'English':
         assistant = DataScienceInterviewAssistant(instruction="instructions.txt", current_user=current_user.id)
     elif preference['language'] == 'Hindi':
         assistant = DataScienceInterviewAssistant(instruction="instructions_hindi.txt", current_user=current_user.id)    
-    show_feedback = False  # Flag to control UI display
+    show_feedback = False
 
     if request.method == 'POST':
-        question = request.form.get('question')
-        responses, score = assistant.conduct_interview(question)
-        show_feedback = True  # Set true if feedback needs to be shown
+        # Check if a file was uploaded
+        file = request.files.get('cv')
+        if file and file.filename:
+            filename = secure_filename(file.filename)
+            # file.save(os.path.join('path/to/save/files', filename))
+            print("File uploaded and saved: ", filename)
+            # Assuming the file's path or name is used in the interview
+            responses, score = assistant.conduct_interview(filename)
+            
+            show_feedback = True
+        elif 'question' in request.form:
+            question = request.form.get('question')
+            responses, score = assistant.conduct_interview(question)
+            show_feedback = True
 
-    responses = assistant.get_messages(session.get('name'))
-    if responses:
-        response_last = assistant.convert_json_string_to_dict(responses[0])
-
+        responses = assistant.get_messages(session.get('name'))
+        if responses:
+            response_last = assistant.convert_json_string_to_dict(responses[0])
+            if response_last['feedback'] =="":
+                show_feedback = False
     return render_template('chat_ui.html', responses=response_last, show_feedback=show_feedback, name=session.get('name'), preference=preference)
 
 
