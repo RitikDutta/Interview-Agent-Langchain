@@ -35,6 +35,10 @@ def add_init_user(user_id='x', name='y', email='z'):
     user_manager = UserManager()
     user_manager.initialize_user(user_id, name, email)
 
+def get_user_preference(user_id):
+    user_manager = UserManager()
+    preference = user_manager.get_user_setting(current_user.id)
+    return preference
 
 class User(UserMixin):
     def __init__(self, email):
@@ -70,6 +74,11 @@ def login():
         session['name'] = user_name
         flash('Logged in successfully.')
         add_init_user(user_id, user_name, email)
+        perference = get_user_preference(current_user.id)
+        
+        # print(perference.language)
+        if perference['interviewer']==None or perference['language']==None:
+            return redirect(url_for('settings'))
         return redirect(url_for('profile'))
     return render_template('login.html', ids = 'random_ID')
 
@@ -78,8 +87,13 @@ def login():
 @app.route('/profile', methods=['GET', 'POST'])
 @login_required
 def profile():
-    assistant = DataScienceInterviewAssistant(instruction="Your instruction here", current_user=current_user.id)
-    
+
+    preference = get_user_preference(current_user.id)
+    if preference['language'] == 'English':
+        assistant = DataScienceInterviewAssistant(instruction="instructions.txt", current_user=current_user.id)
+    elif preference['language'] == 'Hindi':
+        assistant = DataScienceInterviewAssistant(instruction="instructions_hindi.txt", current_user=current_user.id)
+
     if request.method == 'POST':
         question = request.form.get('question')
         responses, score = assistant.conduct_interview(question)
@@ -121,8 +135,11 @@ def dashboard():
 @login_required
 def livec():
     response_last=None
-    assistant = DataScienceInterviewAssistant(instruction="Your instruction here", current_user=current_user.id)
-    
+    preference = get_user_preference(current_user.id)
+    if preference['language'] == 'English':
+        assistant = DataScienceInterviewAssistant(instruction="instructions.txt", current_user=current_user.id)
+    elif preference['language'] == 'Hindi':
+        assistant = DataScienceInterviewAssistant(instruction="instructions_hindi.txt", current_user=current_user.id)    
     show_feedback = False  # Flag to control UI display
 
     if request.method == 'POST':
@@ -134,11 +151,12 @@ def livec():
     if responses:
         response_last = assistant.convert_json_string_to_dict(responses[0])
 
-    return render_template('chat_ui.html', responses=response_last, show_feedback=show_feedback, name=session.get('name'))
+    return render_template('chat_ui.html', responses=response_last, show_feedback=show_feedback, name=session.get('name'), preference=preference)
 
 
 
 @app.route('/settings', methods=['GET', 'POST'])
+@login_required
 def settings():
     if request.method == 'POST':
         choice = request.form.get('choice')
@@ -156,6 +174,7 @@ def settings():
     return render_template('settings.html')
 
 @app.route('/confirmation')
+@login_required
 def confirmation():
     # Retrieve preferences from session
     interviewer = session.pop('type', None)
