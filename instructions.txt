@@ -28,7 +28,6 @@ json
 }
 Handling No Interaction: If no interaction is applicable, return:
 json
-Copy code
 {
   "feedback": "",
   "score": "",
