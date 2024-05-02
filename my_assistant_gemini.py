@@ -18,7 +18,7 @@ class DataScienceInterviewAssistant:
         self.current_user = current_user
         self.usermanager = UserManager()
         genai.configure(api_key=GOOGLE_API_KEY)
-        instructions = self.get_instructions()
+        instructions = self.get_instructions(instructions=instruction)
         self.model = genai.GenerativeModel('gemini-1.5-pro-latest', system_instruction=instructions)
         chat = self.usermanager.get_chat(self.current_user)
         if chat:
@@ -28,8 +28,8 @@ class DataScienceInterviewAssistant:
         self.chat = self.model.start_chat(history=chat)
         self.msg = ''
 
-    def get_instructions(self):
-        with open('instructions.txt', 'r') as file:
+    def get_instructions(self, instructions):
+        with open(instructions, 'r') as file:
             instructions = file.read()
         return instructions
 
