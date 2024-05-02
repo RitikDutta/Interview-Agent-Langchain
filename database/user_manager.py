@@ -120,6 +120,12 @@ class UserManager:
         self.add_or_update_interviewer(user_id, interviewer=interviewer)
         self.add_or_update_language(user_id, language=language)
 
+    def get_user_setting(self, user_id):
+        preference = {"interviewer": "", "language": ""}
+        preference['interviewer'] = self.get_interviewer(user_id)
+        preference['language'] = self.get_language(user_id)
+        return preference
+
     
     def get_chat(self, user_id):
         user_data = self.firestore_crud.read_document(user_id)
