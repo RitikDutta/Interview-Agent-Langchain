@@ -132,17 +132,21 @@
 <div id="chat-container">
     <!-- Initial Stage -->
     <div id="initial-stage" class="container" style="{{ 'display: none;' if show_feedback else 'display: block;' }}">
-        <button id="speak_button" onclick='speak(document.getElementById("text-to-speak").textContent, false)''>Speak</button>
+        <button id="speak_button" onclick='speak(document.getElementById("text-to-speak").textContent, false)'>Speak</button>
         <h1 id="text-to-speak" class="question">{{ responses.next_question }}</h1>
-        <form method="post" id="response-form">
+        <form method="post" id="response-form" enctype="multipart/form-data">
             <textarea id="question" name="question" placeholder="Type your response..."></textarea>
             <div class="buttons">
-                <button type="button" id="upload-btn" onclick="uploadCV()">Upload CV</button>
+                <!-- Update to use input type file for uploading CV -->
+                <input type="file" id="cv-upload" name="cv" style="display: none;" onchange="document.getElementById('upload-form-label').innerHTML = this.files[0].name;">
+                <label id="upload-form-label" for="cv-upload" class="button_r">Upload CV</label>
                 <button type="button" id="toggle-btn" class="button_r">Voice</button>
                 <input type="submit" id="submit-btn" value="Submit">
             </div>
         </form>
     </div>
+
+    
 
     <!-- After User Response - Feedback and Score -->
     <div id="feedback-stage" class="container" style="{{ 'display: block;' if show_feedback else 'display: none;' }}">
