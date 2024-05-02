@@ -131,7 +131,7 @@
         if (index < textChunks.length) {
             const chunk = textChunks[index];
             const utterance = new SpeechSynthesisUtterance(chunk);
-            const selectedVoiceName = 'Google US English';
+            const selectedVoiceName = voiceSelect.value;
             console.log(selectedVoiceName)
 
             utterance.voice = voices.find(voice => voice.name === selectedVoiceName);
