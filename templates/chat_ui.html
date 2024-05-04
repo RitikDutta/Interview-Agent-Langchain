@@ -121,6 +121,17 @@
         50% { opacity: 0.5; }
         100% { opacity: 1; }
     }
+
+    .score_image {
+        position: fixed;   
+        bottom: 0;        
+        left: 50%;         
+        transform: translateX(-50%); 
+        height: 40vh;     
+        width: auto;
+        min-width: 10px;
+    }
+
 </style>
 
 
@@ -146,7 +157,7 @@
         </form>
     </div>
 
-    
+
 
     <!-- After User Response - Feedback and Score -->
     <div id="feedback-stage" class="container" style="{{ 'display: block;' if show_feedback else 'display: none;' }}">
@@ -159,11 +170,36 @@
                 </div>
                 <span class="score-text" id="score-text">Score</span>
             </div>
-            <button id="next-btn" data-next-question="{{ responses.next_question }}" onclick="nextQuestion(); clearForm(); speak(document.getElementById('text-to-speak').textContent, false)">Next</button>
+            <button id="next-btn" data-next-question="{{ responses.next_question }}" onclick="nextQuestion(); clearForm(); speak(document.getElementById('text-to-speak').textContent, false); score_static_pose()">Next</button>
         </div>
     </div>
 
+<div>
+    <img id="score1" class="score_image" src="{{ url_for('static', filename='images/ritik_static.png') }}" alt="10">
 </div>
+
+<script>
+    console.log(`{{test}}`)
+    document.addEventListener("DOMContentLoaded", function() {
+        const score1_img = document.getElementById('score1');
+            if (`{{show_feedback}}` == 'True'){
+                score1_img.src = '{{ url_for('static', filename='images/ritik_' ~ responses.score ~ '.png') }}';
+                score1_img.style.display = 'block';
+            }
+    });
+    function score_static_pose(){
+        const score1_img = document.getElementById('score1');
+        score1_img.src = '{{ url_for('static', filename='images/ritik_static.png') }}';
+    }
+
+    function show_listening_pose(){
+        const score1_img = document.getElementById('score1');
+        score1_img.src = '{{ url_for('static', filename='images/ritik_listening.png') }}';
+    }
+</script>
+
+
+
 
 <script>
     console.log(`{{preference.language}}`)
@@ -193,11 +229,13 @@
             if (!isRecording) {
                 recognizer.start();
                 toggleBtn.textContent = "Listening";
+                show_listening_pose();
                 toggleBtn.classList.add("recording");
             } else {
                 recognizer.stop();
                 toggleBtn.textContent = "Not Listening";
                 toggleBtn.classList.remove("recording");
+                score_static_pose();
             }
             isRecording = !isRecording;
         });
