@@ -178,7 +178,7 @@ def livec():
         response_last = assistant.convert_json_string_to_dict(responses[0])
         if response_last['feedback'] =="":
             show_feedback = False
-    return render_template('chat_ui.html', responses=response_last, show_feedback=show_feedback, name=session.get('name'), preference=preference)
+    return render_template('chat_ui.html', responses=response_last, show_feedback=show_feedback, name=session.get('name'), preference=preference, test=10)
 
 
 
