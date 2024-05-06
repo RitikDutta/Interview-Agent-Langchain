@@ -12,7 +12,7 @@
             display: flex;
             flex-direction: column;
 /*            height: 100vh;*/
-            padding-top: 100px; 
+/*            padding-top: 100px; */
         }
         .chat-container {
             flex-grow: 1;
@@ -125,13 +125,105 @@
         }
 
     </style>
+
+    <!-- nav bar -->
+<style>
+
+        .header-banner {
+            background-color: #073642;
+            color: #FFFFFF;
+            padding: 12px 50px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .header-banner h1 {
+            margin: 0;
+            font-size: 1.6em;
+        }
+
+        nav a {
+            background-color: #268bd2;
+            text-decoration: none;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            margin: 0 5px;
+            cursor: pointer;
+            border-radius: 3px;
+            font-size: 1em;
+            transition: background-color 0.3s, box-shadow 0.3s, transform 0.2s;
+        }
+
+        nav a:hover {
+            background-color: #0077b3;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            transform: translateY(-2px);
+        }
+
+        @media (max-width: 530px) {
+            .header-banner {
+                
+                padding: 20px;
+                text-align: center;
+            }
+
+            .header-banner h1 {
+/*                margin-bottom: 10px;*/
+            }
+
+            nav a {
+                padding: 8px 10px;  
+                font-size: 0.9em;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .header-banner {
+                padding: 15px;
+            }
+
+            nav a {
+                width: 50%; 
+                margin-bottom: 5px;
+            }
+        }
+
+        .header-title {
+            position: relative; 
+            padding-left: 15px;
+            color: #FFFFFF;
+        }
+
+        .header-title::before {
+            content: ''; 
+            position: absolute; 
+            left: 0; 
+            top: 50%; 
+            transform: translateY(-50%); 
+            width: 10px; 
+            height: 10px; 
+            background-color: #4CAF50; 
+            border-radius: 100%; 
+        }
+
+    </style>
 </head>
 <body>
-<div class="chat-container">
-        <div class="header">
-        <h1>Welcome {{name}}</h1>
-        <a href="{{ url_for('logout') }}" class="logout-button">Logout</a>
-    </div>
+<!-- nav bar -->
+<header class="header-banner">
+    <h1 class="header-title">Ritik Dutta</h1>
+        <nav style="display: flex;">
+            <a href="{{ url_for('livec') }}" onclick="openSettings()">Live</a>
+            <a href="{{ url_for('settings') }}">Settings</a>
+            <a href="{{ url_for('logout') }}">Logout</a>
+        </nav>
+    </header>
+    <div style="padding-top: 10px;">
+        
         {% if responses %}
             {% for response in responses|reverse %}
                 <div class="{{ 'assistant-message' if 'Assistant:' in response else 'user-message' }}">
@@ -142,7 +234,7 @@
                 <div class="assistant-message">Score: {{ score }}</div>
             {% endif %}
         {% endif %}
-</div>
+    </div>
 <div class="form-container">
     <form method="post">
         <input type="text" id="question" name="question" placeholder="Enter your interview question here">
