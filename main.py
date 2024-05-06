@@ -38,6 +38,11 @@ def add_init_user(user_id='x', name='y', email='z'):
     user_manager = UserManager()
     user_manager.initialize_user(user_id, name, email)
 
+def is_user(user_id):
+    user_manager = UserManager()
+    return user_manager.is_user(user_id)
+    
+
 def get_user_preference(user_id):
     user_manager = UserManager()
     preference = user_manager.get_user_setting(current_user.id)
@@ -80,23 +85,43 @@ def login():
         return render_template('already_logged_in.html')
     if request.method == 'POST':
         user_id = request.form.get('user_id')
+        password = request.form.get('password')
+        user = User(user_id)
         user_name = request.form.get('name')
-        email = request.form.get('email')
-        user = User(user_id)    
-        print(user_id)
-        print(user_name)
-        print(email)
+
+        if request.form['form_action'] == 'signup_submit':
+            print("SIGN IN REQUEST")
+            email = request.form.get('email')
+            print(user_id)
+            print(user_name)
+            print(email)
             
-        login_user(user)
-        session['name'] = user_name
-        flash('Logged in successfully.')
-        add_init_user(user_id, user_name, email)
-        perference = get_user_preference(current_user.id)
-        
-        # print(perference.language)
-        if perference['interviewer']==None or perference['language']==None:
-            return redirect(url_for('settings'))
-        return redirect(url_for('profile'))
+            if not is_user(user_id):
+                login_user(user)
+                session['name'] = user_name
+                flash('Logged in successfully.')
+                add_init_user(user_id, user_name, email)
+                perference = get_user_preference(current_user.id)
+                
+                # print(perference.language)
+                if perference['interviewer']==None or perference['language']==None:
+                    return redirect(url_for('settings'))
+                return redirect(url_for('profile'))
+            else:
+                return render_template('user_present.html')
+        elif request.form['form_action'] == 'login_submit':
+            print("LOGIN IN REQUEST")
+            if is_user(user_id):
+                login_user(user)
+                session['name'] = user_name
+                flash('Logged in successfully.')
+                perference = get_user_preference(current_user.id)
+                # print(perference.language)
+                if perference['interviewer']==None or perference['language']==None:
+                    return redirect(url_for('settings'))
+                return redirect(url_for('profile'))
+            else:
+                return render_template('user_not_present.html')
     return render_template('login.html', ids = 'random_ID')
 
 
