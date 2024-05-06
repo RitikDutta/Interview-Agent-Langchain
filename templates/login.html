@@ -442,7 +442,7 @@ footer a:hover {
             <!-- <input type="text" id="username" name="username" placeholder="Username" required> -->
             <div class="input-field">
               <i class="fas fa-user"></i>
-              <input type="text" placeholder="Username" />
+              <input type="text" placeholder="Username" id='user_id', name="user_id" />
             </div>
             <div class="input-field">
               <i class="fas fa-lock"></i>
@@ -471,20 +471,25 @@ footer a:hover {
                   </div>
 
             </div>
+            <!--  SIGNUP  -->
           </form>
-          <form action="#" class="sign-up-form">
+          <form form action="{{ url_for('login') }}" method="post" class="sign-up-form">
             <h2 class="title">Sign up</h2>
             <div class="input-field">
               <i class="fas fa-user"></i>
-              <input type="text" placeholder="Username" />
+              <input type="text" placeholder="Username" id='name' name="name" />
+            </div>
+            <div class="input-field">
+              <i class="fas fa-id-card"></i>
+              <input type="text" placeholder="Name" id='name' name="name" />
             </div>
             <div class="input-field">
               <i class="fas fa-envelope"></i>
-              <input type="email" placeholder="Email" />
+              <input type="email" placeholder="Email" name="email" id="email" />
             </div>
             <div class="input-field">
               <i class="fas fa-lock"></i>
-              <input type="password" placeholder="Password" />
+              <input type="password" placeholder="Password" name="user_id" id="user_id" />
             </div>
             <input type="submit" class="btn" value="Login" />
           </form>
@@ -558,7 +563,7 @@ footer a:hover {
 
 <footer>
         <p>
-            UI design of this page is created by 
+            UI design of Signup page is created by 
             <a href="https://codepen.io/novaardiansyah1/pen/JjKgrBm" target="_blank">Nova Ardiansyah</a>. 
             Backend And authentication created by Ritik Dutta itself.
         </p>
