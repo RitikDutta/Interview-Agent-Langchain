@@ -82,7 +82,7 @@ def login():
         user_id = request.form.get('user_id')
         user_name = request.form.get('name')
         email = request.form.get('email')
-        user = User(user_id)
+        user = User(user_id)    
         print(user_id)
         print(user_name)
         print(email)
@@ -178,7 +178,7 @@ def livec():
         response_last = assistant.convert_json_string_to_dict(responses[0])
         if response_last['feedback'] =="":
             show_feedback = False
-    return render_template('chat_ui.html', responses=response_last, show_feedback=show_feedback, name=session.get('name'), preference=preference, test=10)
+    return render_template('chat_ui.html', responses=response_last, show_feedback=show_feedback, name=session.get('name'), preference=preference, test=4)
 
 
 
