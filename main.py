@@ -112,6 +112,7 @@ def login():
         elif request.form['form_action'] == 'login_submit':
             print("LOGIN IN REQUEST")
             if is_user(user_id):
+                
                 login_user(user)
                 session['name'] = user_name
                 flash('Logged in successfully.')
