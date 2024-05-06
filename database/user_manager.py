@@ -24,6 +24,13 @@ class UserManager:
             user_data = {'details': details, 'performance': performance, 'chat': chat, 'preference': preference}
             self.firestore_crud.create_document(user_id, user_data)
 
+    def is_user(self, user_id):
+        user_data = self.firestore_crud.read_document(user_id)
+        if not user_data:
+            return False
+        else:
+            return True
+
 
     def add_thread_id(self, user_id, thread_id):
         # Add thread_id to the user's performance data
