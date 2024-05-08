@@ -34,14 +34,17 @@ login_manager.login_view = 'please_login'
 # Dummy user database
 users = {'user@example.com': {'password': '123456'}}
 
-def add_init_user(user_id='x', name='y', email='z'):
+def add_init_user(user_id='x', name='y', email='z', password=None):
     user_manager = UserManager()
-    user_manager.initialize_user(user_id, name, email)
+    user_manager.initialize_user(user_id, name, email, password)
 
 def is_user(user_id):
     user_manager = UserManager()
     return user_manager.is_user(user_id)
-    
+
+def check_password(user_id, password):
+    user_manager = UserManager()
+    return user_manager.check_password(user_id, password)
 
 def get_user_preference(user_id):
     user_manager = UserManager()
@@ -88,7 +91,7 @@ def login():
         password = request.form.get('password')
         user = User(user_id)
         user_name = request.form.get('name')
-
+        # signup
         if request.form['form_action'] == 'signup_submit':
             print("SIGN IN REQUEST")
             email = request.form.get('email')
@@ -100,7 +103,7 @@ def login():
                 login_user(user)
                 session['name'] = user_name
                 flash('Logged in successfully.')
-                add_init_user(user_id, user_name, email)
+                add_init_user(user_id, user_name, email, password)
                 perference = get_user_preference(current_user.id)
                 
                 # print(perference.language)
@@ -109,10 +112,12 @@ def login():
                 return redirect(url_for('profile'))
             else:
                 return render_template('user_present.html')
+        # login
         elif request.form['form_action'] == 'login_submit':
             print("LOGIN IN REQUEST")
             if is_user(user_id):
-                
+                if not check_password(user_id, password):
+                    return render_template("wrong_password.html")
                 login_user(user)
                 session['name'] = user_name
                 flash('Logged in successfully.')
