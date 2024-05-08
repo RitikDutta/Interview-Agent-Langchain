@@ -12,11 +12,11 @@ class UserManager:
             firebase_admin.initialize_app(cred)
 
         self.firestore_crud = FirestoreCRUD(self.credential_path, self.collection_name)
-    def initialize_user(self, user_id, name, email):
+    def initialize_user(self, user_id, name, email, password=None):
         user_data = self.firestore_crud.read_document(user_id)
         if not user_data:
             # User does not exist, so create new user
-            details = {'name': name, 'email': email}
+            details = {'name': name, 'email': email, 'password': password}
             performance = {}  
             chat = {}
             preference={}
@@ -30,6 +30,13 @@ class UserManager:
             return False
         else:
             return True
+        
+    def check_password(self, user_id, password):
+        user_data = self.firestore_crud.read_document(user_id)
+        main_password = user_data['details'].get('password')
+        return password==main_password
+
+        
 
 
     def add_thread_id(self, user_id, thread_id):
@@ -127,7 +134,7 @@ class UserManager:
         self.add_or_update_interviewer(user_id, interviewer=interviewer)
         self.add_or_update_language(user_id, language=language)
 
-    def get_user_setting(self, user_id):
+    def  get_user_setting(self, user_id):
         preference = {"interviewer": "", "language": ""}
         preference['interviewer'] = self.get_interviewer(user_id)
         preference['language'] = self.get_language(user_id)
