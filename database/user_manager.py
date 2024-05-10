@@ -1,20 +1,24 @@
 from database.firestoreCRUD import FirestoreCRUD
 from firebase_admin import credentials, firestore
 import firebase_admin
+from security.password_manager import Password_manager
 
 class UserManager:
     def __init__(self):
         self.firestore_crud = FirestoreCRUD
         self.credential_path = 'database/interview-mentor-firebase-adminsdk-sguq7-aee5c6cca8.json'
         self.collection_name = 'users'
+        self.password_manager = Password_manager()
         if not firebase_admin._apps:
             cred = credentials.Certificate(self.credential_path)
             firebase_admin.initialize_app(cred)
 
         self.firestore_crud = FirestoreCRUD(self.credential_path, self.collection_name)
-    def initialize_user(self, user_id, name, email, password=None):
+    def initialize_user(self, user_id, name, email, password="_"):
         user_data = self.firestore_crud.read_document(user_id)
         if not user_data:
+            # hash the password
+            password = self.password_manager.hash_password(password)
             # User does not exist, so create new user
             details = {'name': name, 'email': email, 'password': password}
             performance = {}  
@@ -33,10 +37,11 @@ class UserManager:
         
     def check_password(self, user_id, password):
         user_data = self.firestore_crud.read_document(user_id)
-        main_password = user_data['details'].get('password')
-        return password==main_password
+        stored_hash = user_data['details'].get('password')
 
-        
+        return self.password_manager.verify_password(stored_hash, password)
+
+    
 
 
     def add_thread_id(self, user_id, thread_id):
@@ -96,16 +101,6 @@ class UserManager:
             # If no existing data, create new entry with the new chat
             user_data = {'chat': {'chat': new_chat}}
             self.firestore_crud.create_document(user_id, user_data)
-
-
-
-
-    def get_score(self, user_id):
-        # Retrieve the score for the given user_id
-        user_data = self.firestore_crud.read_document(user_id)
-        if user_data and 'performance' in user_data:
-            return user_data['performance'].get('score')
-        return None
 
     def add_or_update_interviewer(self, user_id, interviewer):
         user_data = self.firestore_crud.read_document(user_id)
