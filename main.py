@@ -34,7 +34,7 @@ login_manager.login_view = 'please_login'
 # Dummy user database
 users = {'user@example.com': {'password': '123456'}}
 
-def add_init_user(user_id='x', name='y', email='z', password=None):
+def add_init_user(user_id='x', name='y', email='z', password="_"):
     user_manager = UserManager()
     user_manager.initialize_user(user_id, name, email, password)
 
@@ -91,43 +91,58 @@ def login():
         password = request.form.get('password')
         user = User(user_id)
         user_name = request.form.get('name')
+        email = request.form.get('email')
         # signup
-        if request.form['form_action'] == 'signup_submit':
-            print("SIGN IN REQUEST")
-            email = request.form.get('email')
-            print(user_id)
-            print(user_name)
-            print(email)
-            
-            if not is_user(user_id):
-                login_user(user)
-                session['name'] = user_name
-                flash('Logged in successfully.')
-                add_init_user(user_id, user_name, email, password)
-                perference = get_user_preference(current_user.id)
+        try:
+            if request.form['form_action'] == 'signup_submit':
+                print("SIGN IN REQUEST")
+                print(user_id)
+                print(user_name)
+                print(email)
                 
-                # print(perference.language)
-                if perference['interviewer']==None or perference['language']==None:
-                    return redirect(url_for('settings'))
-                return redirect(url_for('profile'))
-            else:
-                return render_template('user_present.html')
-        # login
-        elif request.form['form_action'] == 'login_submit':
-            print("LOGIN IN REQUEST")
-            if is_user(user_id):
-                if not check_password(user_id, password):
-                    return render_template("wrong_password.html")
-                login_user(user)
-                session['name'] = user_name
-                flash('Logged in successfully.')
-                perference = get_user_preference(current_user.id)
-                # print(perference.language)
-                if perference['interviewer']==None or perference['language']==None:
-                    return redirect(url_for('settings'))
-                return redirect(url_for('profile'))
+                if not is_user(user_id):
+                    login_user(user)
+                    session['name'] = user_name
+                    flash('Logged in successfully.')
+                    add_init_user(user_id, user_name, email, password)
+                    perference = get_user_preference(current_user.id)
+                    
+                    # print(perference.language)
+                    if perference['interviewer']==None or perference['language']==None:
+                        return redirect(url_for('settings'))
+                    return redirect(url_for('profile'))
+                else:
+                    return render_template('user_present.html')
+            # login
+            elif request.form['form_action'] == 'login_submit':
+                print("LOGIN IN REQUEST")
+                if is_user(user_id):
+                    if not check_password(user_id, password):
+                        return render_template("wrong_password.html")
+                    login_user(user)
+                    session['name'] = user_name
+                    flash('Logged in successfully.')
+                    perference = get_user_preference(current_user.id)
+                    # print(perference.language)
+                    if perference['interviewer']==None or perference['language']==None:
+                        return redirect(url_for('settings'))
+                    return redirect(url_for('profile'))
+                else:
+                    return render_template('user_not_present.html')
             else:
                 return render_template('user_not_present.html')
+        except:
+            login_user(user)
+            session['name'] = user_name
+            flash('Logged in successfully.')
+            add_init_user(user_id, user_name, email)
+            perference = get_user_preference(current_user.id)
+            
+            # print(perference.language)
+            if perference['interviewer']==None or perference['language']==None:
+                return redirect(url_for('settings'))
+            return redirect(url_for('profile'))
+               
     return render_template('login.html', ids = 'random_ID')
 
 
@@ -157,9 +172,9 @@ def profile():
     return render_template('index.html', responses=responses, score=score, name=session.get('name'))
 
 @app.route('/dashboard', methods=['GET', 'POST'])
-@login_required
+
 def dashboard():
-    return render_template("dashboard.html")
+    return render_template("dashboard.html", data=[2,1,10,6,3])
 
 # @app.route('/livec', methods=['GET', 'POST'])
 # def livec():
@@ -209,6 +224,8 @@ def livec():
         response_last = assistant.convert_json_string_to_dict(responses[0])
         if response_last['feedback'] =="":
             show_feedback = False
+
+    print("NAME:: ", session.get('name'))
     return render_template('chat_ui.html', responses=response_last, show_feedback=show_feedback, name=session.get('name'), preference=preference, test=4)
 
 
