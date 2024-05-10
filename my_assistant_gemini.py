@@ -56,12 +56,12 @@ class DataScienceInterviewAssistant:
         chat = self.usermanager.get_chat(self.current_user)
         if chat:
             chat = chat[::-1]  # Reverse the chat list
-
-        # We need to modify the chat list with replaced text
-            for index in range(len(chat)):
-                # Replace "User" with "xyz" and update the list at the same position
-                chat[index] = chat[index].replace("User", custom_name)
-                # print("MESSAGE: ", chat[index])  # Print the updated message
+            if custom_name:
+            #modify the chat list with replaced text
+                for index in range(len(chat)):
+                    # Replace "User" with "xyz" and update the list at the same position
+                    chat[index] = chat[index].replace("User", custom_name)
+                    # print("MESSAGE: ", chat[index])  # Print the updated message
 
         return chat
 
