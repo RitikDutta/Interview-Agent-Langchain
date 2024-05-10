@@ -41,7 +41,9 @@ def add_init_user(user_id='x', name='y', email='z', password="_"):
 def is_user(user_id):
     user_manager = UserManager()
     return user_manager.is_user(user_id)
-
+def get_name(user_id):
+    user_manager = UserManager()
+    return user_manager.get_name(user_id)
 def check_password(user_id, password):
     user_manager = UserManager()
     return user_manager.check_password(user_id, password)
@@ -115,6 +117,7 @@ def login():
                     return render_template('user_present.html')
             # login
             elif request.form['form_action'] == 'login_submit':
+                user_name = get_name(user_id)
                 print("LOGIN IN REQUEST")
                 if is_user(user_id):
                     if not check_password(user_id, password):
@@ -206,18 +209,21 @@ def livec():
     show_feedback = False
 
     if request.method == 'POST':
-        # Check if a file was uploaded
-        file = request.files.get('cv')
-        if file and file.filename:
-            filename = secure_filename(file.filename)
-            print("File uploaded and saved: ", filename)
-            responses, score = assistant.conduct_interview(filename)
-            
-            show_feedback = True
-        elif 'question' in request.form:
-            question = request.form['question']
-            responses, score = assistant.conduct_interview(question)
-            show_feedback = True
+        try:
+            # Check if a file was uploaded
+            file = request.files.get('cv')
+            if file and file.filename:
+                filename = secure_filename(file.filename)
+                print("File uploaded and saved: ", filename)
+                responses, score = assistant.conduct_interview(filename)
+                
+                show_feedback = True
+            elif 'question' in request.form:
+                question = request.form['question']
+                responses, score = assistant.conduct_interview(question)
+                show_feedback = True
+        except:
+            return "server timeout"
 
     responses = assistant.get_messages(session.get('name'))
     if responses:
