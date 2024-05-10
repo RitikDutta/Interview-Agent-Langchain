@@ -21,7 +21,7 @@ class UserManager:
             password = self.password_manager.hash_password(password)
             # User does not exist, so create new user
             details = {'name': name, 'email': email, 'password': password}
-            performance = {}  
+            performance = {'score': []}  
             chat = {}
             preference={}
             
@@ -77,6 +77,8 @@ class UserManager:
     def add_or_update_score(self, user_id, score):
         # Add or update the score in the user's performance data
         user_data = self.firestore_crud.read_document(user_id)
+        scores = user_data['performance']['score']
+        scores.append(score)
         if user_data:
             user_data['performance']['score'] = score
             self.firestore_crud.update_document(user_id, user_data)
@@ -118,6 +120,13 @@ class UserManager:
         if user_data and 'preference' in user_data:
             return user_data['preference'].get('interviewer')
         return None
+    
+    def get_name(self, user_id):
+        user_data = self.firestore_crud.read_document(user_id)
+        if user_data and 'details' in user_data:
+            return user_data['details'].get('name')
+        return None
+
     def get_language(self, user_id):
         # Retrieve the score for the given user_id
         user_data = self.firestore_crud.read_document(user_id)
