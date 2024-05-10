@@ -223,8 +223,11 @@
 </head>
 <body>
 <!-- nav bar -->
+<script>
+    console.log(`{{name}}`)
+</script>
 <header class="header-banner">
-    <h1 class="header-title">Ritik Dutta</h1>
+    <h1 class="header-title">{{name}}</h1>
         <nav style="display: flex;">
             <a href="{{ url_for('profile') }}" onclick="openSettings()">History</a>
             <a href="{{ url_for('settings') }}">Settings</a>

@@ -130,6 +130,7 @@
 <style>
 
         .header-banner {
+            position: fixed;
             background-color: #073642;
             color: #FFFFFF;
             padding: 12px 50px;
@@ -137,6 +138,7 @@
             justify-content: space-between;
             align-items: center;
             box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            width: -webkit-fill-available;
         }
 
         .header-banner h1 {
@@ -215,14 +217,14 @@
 <body>
 <!-- nav bar -->
 <header class="header-banner">
-    <h1 class="header-title">Ritik Dutta</h1>
+    <h1 class="header-title">{{name}}</h1>
         <nav style="display: flex;">
             <a href="{{ url_for('livec') }}" onclick="openSettings()">Live</a>
             <a href="{{ url_for('settings') }}">Settings</a>
             <a href="{{ url_for('logout') }}">Logout</a>
         </nav>
     </header>
-    <div style="padding-top: 10px;">
+    <div style="padding-top: 70px; padding-bottom: 50px;">
         
         {% if responses %}
             {% for response in responses|reverse %}
