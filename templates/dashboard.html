@@ -1,10 +1,140 @@
 <!DOCTYPE html>
-<html lang="">
-  <head>
-    <meta charset="utf-8">
-    <title></title>
-  </head>
-  <body>
-    <h1>DASHBOARD</h1>
-  </body>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Chart.js Example</title>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            flex-wrap: wrap;
+            padding: 20px;
+        }
+
+        .chart-container {
+            flex-basis: 50%;
+            box-sizing: border-box;
+            padding: 20px;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            max-width: 600px;
+        }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="chart-container">
+        <h2>Line Chart - User Scores Over Time</h2>
+        <canvas id="lineChart"></canvas>
+    </div>
+    <div class="chart-container">
+        <h2>Bar Chart - Scores Distribution</h2>
+        <canvas id="barChart"></canvas>
+    </div>
+
+    <script>
+        // line chart
+        var ctxLine = document.getElementById('lineChart').getContext('2d');
+        var lineChart = new Chart(ctxLine, {
+            type: 'line',
+            data: {
+                labels: ['Question 1', 'Question 2', 'Question 3', 'Question 4', 'Question 5'],
+                datasets: [{
+                    label: 'Score',
+                    data: {{ data|tojson }},
+                    backgroundColor: [
+                        'rgba(200, 0, 0, 0.5)',
+                        'lightblue',
+                        'lightgreen',
+                        'rgba(75, 192, 192, 0.2)',
+                        'rgba(153, 102, 255, 0.2)'
+                    ],
+                    borderColor: [
+                        'rgba(255, 99, 132, 1)',
+                        'rgba(54, 162, 235, 1)',
+                        'rgba(255, 206, 86, 1)',
+                        'rgba(75, 192, 192, 1)',
+                        'rgba(153, 102, 255, 1)'
+                    ],
+                    pointStyle: 'circle',
+                    pointRadius: 10,
+                    pointHoverRadius: 15,
+                    borderWidth: 3
+                }]
+            },
+            options: {
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                },
+                interaction: {
+                  intersect: false,
+                  mode: 'index',
+                },
+
+
+
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        suggestedMax: 10,
+                    }
+                },
+                    animations: {
+                      y: {
+                        easing: 'easeInOutElastic',
+                        from: (ctx) => {
+                          if (ctx.type === 'data') {
+                            if (ctx.mode === 'default' && !ctx.dropped) {
+                              ctx.dropped = true;
+                              return 0;
+                            }
+                          }
+                        }
+                      }
+                  }
+            }
+        });
+        let dataa = {{ data|tojson }};
+        // bar chart
+        var ctxBar = document.getElementById('barChart').getContext('2d');
+        var barChart = new Chart(ctxBar, {
+            type: 'bar',
+            data: {
+                labels: ['Question 1', 'Question 2', 'Question 3', 'Question 4', 'Question 5'],
+                datasets: [{
+                    label: 'Score',
+                    data: dataa,
+                    backgroundColor: [
+                        'lightred',
+                        'lightblue',
+                        'lightgreen',
+                        'rgba(75, 192, 192, 0.2)',
+                        'rgba(153, 102, 255, 0.2)'
+                    ],
+                    borderColor: [
+                        'rgba(255, 99, 132, 1)',
+                        'rgba(54, 162, 235, 1)',
+                        'rgba(255, 206, 86, 1)',
+                        'rgba(75, 192, 192, 1)',
+                        'rgba(153, 102, 255, 1)'
+                    ],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+    </script>
+</body>
 </html>
