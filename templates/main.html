@@ -8,23 +8,26 @@
 	<meta http-equiv="X-UA-Compatible" content="IE=edge">
 	<title>Ritik Dutta</title>
 	<meta name="viewport" content="width=device-width, initial-scale=1">
-	<meta name="description" content="" />
-	<meta name="keywords" content="" />
+	<meta name="description" content="Ritik Dutta home, webpage, information, search" />
+	<meta name="keywords" content="machine learning, data analysis, ML algorithms, ML pipelines, Sklearn, XGBoost, deep learning, TensorFlow, CNN, DevOps, automation, Docker, Jenkins, Git, AWS, MLflow, Circle CI, CI/CD, cloud services, GCP, backend development, Flask, NoSQL, Cassandra, Firebase Realtime DB, Firebase Firestore, OAuth, API development, Postman, Ajax, computer vision, object detection, OpenCV, Yolo, FaceNet, MediaPipe, natural language processing, NLP, Langchain, GPT, BERT, Transformers, Hugging Face, web development, Bootstrap, HTML, CSS, JavaScript, IoT, Raspberry Pi, MQTT, home automation, game development, Blender, Unity, cybersecurity, network engineering, penetration testing, SQL injection, script injection">
+
 	<meta name="author" content="" />
 
   <!-- Facebook and Twitter integration -->
-	<meta property="og:title" content=""/>
-	<meta property="og:image" content=""/>
-	<meta property="og:url" content=""/>
-	<meta property="og:site_name" content=""/>
-	<meta property="og:description" content=""/>
-	<meta name="twitter:title" content="" />
-	<meta name="twitter:image" content="" />
-	<meta name="twitter:url" content="" />
-	<meta name="twitter:card" content="" />
+	<meta property="og:type" content="website" />
+	<meta property="og:title" content="Ritik Dutta - Full Stack Developer | Machine Learning Expert" />
+	<meta property="og:description" content="Explore my professional portfolio featuring projects on Machine Learning, Deep Learning, and Full-Stack Development. Dive into case studies and code on my website!" />
+	<meta property="og:image" content="https://i.imgur.com/zkCFRy2.png" />
+	<meta property="og:url" content="https://www.ritikdutta.com" />
+	<meta property="og:site_name" content="Ritik Dutta's Portfolio" />
 
-	<!-- Place favicon.ico and apple-touch-icon.png in the root directory -->
-	<link rel="shortcut icon" href="favicon.ico">
+
+	<meta name="twitter:card" content="summary_large_image" />
+	<meta name="twitter:title" content="Ritik Dutta - Full Stack Developer | Machine Learning Expert" />
+	<meta name="twitter:description" content="Explore my professional portfolio featuring projects on Machine Learning, Deep Learning, and Full-Stack Development. Dive into case studies and code on my website!" />
+	<meta name="twitter:image" content="https://i.imgur.com/zkCFRy2.png" />
+	<meta name="twitter:url" content="https://www.ritikdutta.com" />
+
 
 	<link href="https://fonts.googleapis.com/css?family=Karla:400,700" rel="stylesheet">
 	<link href="https://fonts.googleapis.com/css?family=Playfair+Display:400,400i,700" rel="stylesheet">
@@ -33,9 +36,6 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='animate.css') }}">
 	<!-- <link rel="stylesheet" href="css/animate.css"> -->
 
-	<!-- Icomoon Icon Fonts-->
-    <link rel="stylesheet" href="{{ url_for('static', filename='icomoon.css') }}">
-	<!-- <link rel="stylesheet" href="css/icomoon.css"> -->
 
 	<!-- Bootstrap  -->
     <link rel="stylesheet" href="{{ url_for('static', filename='bootstrap.css') }}">
@@ -56,14 +56,34 @@
 	<!-- <link rel="stylesheet" href="css/style.css"> -->
     <link rel="stylesheet" href="{{ url_for('static', filename='style2.css') }}">
 
+    <style>
+		.social-icon {
+		    padding: 25px; /* Increases clickable area */
+		    transition: transform 0.3s ease-in-out, box-shadow 0.3s ease;
+		    border-radius: 50%; /* Gives a rounded effect to the clickable area */
+		}
 
+		.social-icon:hover {
+		    transform: scale(1.5); /* Enlarges the icon */
+		}
+    </style>
+    <script type="text/javascript">
+    	document.querySelectorAll('.social-icon').forEach(item => {
+		    item.addEventListener('mousemove', function(e) {
+		        const rect = this.getBoundingClientRect();
+		        const deltaX = Math.abs(e.clientX - (rect.left + rect.width / 2));
+		        const deltaY = Math.abs(e.clientY - (rect.top + rect.height / 2));
+		        const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+		        const scale = Math.max(1, 1.1 - 0.001 * distance);
+		        this.style.transform = `scale(${scale})`;
+		    });
 
-	<!-- Modernizr JS -->
-	<script src="js/modernizr-2.6.2.min.js"></script>
-	<!-- FOR IE9 below -->
-	<!--[if lt IE 9]>
-	<script src="js/respond.min.js"></script>
-	<![endif]-->
+		    item.addEventListener('mouseleave', function(e) {
+		        this.style.transform = 'scale(1)';
+		    });
+		});
+
+    </script>
 
 	</head>
 	<body>
@@ -111,12 +131,13 @@
 									<h2 class="heading">About</h2>
 								</div>
 								<p>I'm the tech guru with a sprinkle of passion and dedication that could launch a rocket to Mars! I'm on a mission to add some AI/ML magic to businesses and create IoT wonders for homes and offices straight out of a sci-fi dream..</p>
-								<p class="colorlib-social-icons", style="    display: flex; flex-wrap: nowrap; justify-content: space-around;">
-									<!-- <a href="#"><i class="icon-facebook4"></i></a> -->
-									<a target="_blank" href="https://github.com/RitikDutta"><i class="fa-brands fa-github"></i></a>
-									<a target="_blank" href="mailto:ritikduttagd@gmail.com"><i class="fa-regular fa-envelope"></i></a>
-									<a target="_blank" href="https://www.linkedin.com/in/ritik-dutta-6037a6173/"><i class="fa-brands fa-linkedin-in"></i></a>
+								<p class="colorlib-social-icons" style="display: flex; flex-wrap: nowrap; justify-content: space-around;">
+								    <!-- <a href="#"><i class="icon-facebook4"></i></a> -->
+								    <a class="social-icon" target="_blank" href="https://github.com/RitikDutta"><i class="fa-brands fa-github"></i></a>
+								    <a class="social-icon" target="_blank" href="mailto:ritikduttagd@gmail.com"><i class="fa-regular fa-envelope"></i></a>
+								    <a class="social-icon" target="_blank" href="https://www.linkedin.com/in/ritik-dutta-6037a6173/"><i class="fa-brands fa-linkedin-in"></i></a>
 								</p>
+
 								<p><a href="#" class="btn btn-primary btn-outline">Contact Me!</a></p>
 							</div>
 						</div>
@@ -357,10 +378,10 @@
 									</div> -->
 								</div>
 							</a>
-							<h2 class="proj_head">Interview Mentor</h2>
-							<div class="col-md-4 col-md-offset-4">
+							<h2 class="proj_head">Interview Ready</h2>
+							<div class="col-md-4 col-md-offset-4" style="width: 75%; margin-left: 12%;">
 								<div class="desc">
-									<p>Generative AI-based Interview Coach: Revolutionize your interview preparation with our AI-Powered Mock Interview Platform. Experience realistic interview simulations, gain invaluable insights through instant feedback, and track your progress with quantifiable scoring.</p>
+									<p>Generative AI-based Interview Coach: Revolutionize your interview preparation with our <b>AI-Powered Mock Interview Platform</b>. Experience <b>realistic interview simulations</b> tailored to a wide range of professional fields—from IT and business management to psychology and civil services. Enhance your preparation with our <b>dynamic user profile system</b>, featuring <b>secure authentication</b> and <b>efficient session management</b>. Personalize your practice sessions by selecting interviewers based on <b>gender</b>, <b>language preferences</b> (English or Hindi), and <b>specific career domains</b>. Gain <b>invaluable insights</b> through <b>instant feedback</b>, track your progress with <b>quantifiable scoring</b>, and prepare for real-world scenarios by engaging in mock interviews that replicate actual job interview experiences in your chosen field.</p>
 									<p class="read"><a href="https://github.com/RitikDutta/Interview_mentor" target="_blank">View Details</a></p>
 									<p class="read"><a href="https://ritikdutta.com/interview" target="_blank">Live Demo</a></p>
 								</div>
@@ -551,7 +572,7 @@
 										<img class="img-responsive" src="static/images/blog2.png" alt="html5 bootstrap by colorlib.com">
 										<div class="overlay"></div>
 										<div class="link">
-											<span class="read">Read more</h2>
+											<h2><span class="read">Read more</span></h2>
 										</div>
 									</a>
 									<div class="desc">
@@ -569,7 +590,7 @@
 										<img class="img-responsive" src="static/images/blog1.jpg" alt="html5 bootstrap by colorlib.com">
 										<div class="overlay"></div>
 										<div class="link">
-											<span class="read">Read more</h2>
+											<span class="read">Read more</span>
 										</div>
 									</a>
 									<div class="desc">
@@ -587,7 +608,7 @@
 										<img class="img-responsive" src="static/images/blog3.png" alt="html5 bootstrap by colorlib.com">
 										<div class="overlay"></div>
 										<div class="link">
-											<span class="read">Read more</h2>
+											<span class="read">Read more</span>
 										</div>
 									</a>
 									<div class="desc">
