@@ -33,6 +33,8 @@ class Spotify:
         response = requests.get(self.now_playing_endpoint, headers=headers)
         if response.status_code == 200:
             track = response.json()
+            if track['currently_playing_type'] == 'ad': #ad running
+                return "not playing"
             if track and 'item' in track and track['item']:
                 return {
                     'song_name': track['item']['name'],
@@ -52,14 +54,15 @@ class Spotify:
         response = requests.get(self.now_playing_endpoint, headers=headers)
         if response.status_code == 200:
             track = response.json()
+
             if track and 'item' in track and track['item']:
                 images = track['item']['album']['images']
                 for item in images:
                     if item['height'] == 300:
                         return(item['url'])
 
-        elif response.status_code == 204:
-            return None
+        elif response.status_code == 204: #not playing
+            return None 
         else:
             return None
 
