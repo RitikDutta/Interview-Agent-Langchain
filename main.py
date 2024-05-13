@@ -3,11 +3,13 @@ from my_assistant_gemini import DataScienceInterviewAssistant  # Import your cla
 from flask import Flask, render_template, request, redirect, url_for, flash, session
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from database.user_manager import UserManager
+from fun_plugins.spotify import Spotify
 # from database.firestoreCRUD import FirestoreCRUD
 # from firebase_admin import credentials, firestore
 # import firebase_admin
 from werkzeug.utils import secure_filename
 import os
+from dotenv import load_dotenv
 from pathlib import Path
 import hashlib
 app = Flask(__name__)
@@ -54,6 +56,15 @@ def get_user_preference(user_id):
     return preference
 
 
+def get_current_song():
+    spotify = Spotify()
+    load_dotenv()
+    client_id = os.getenv("CLIENT_ID") 
+    client_secret = os.getenv("CLIENT_SECRET") 
+    refresh_token = os.getenv("REFRESH_TOKEN")
+    return spotify.get_song(client_id, client_secret, refresh_token)
+
+
 uploaded_files = []
 def upload_if_needed(pathname: str) -> list[str]:
   path = Path(pathname)
@@ -81,7 +92,12 @@ def home():
 
 @app.route('/')
 def mainp():
-    return render_template('main.html')
+    current_song, image = get_current_song()
+    print("SONG: ", current_song)
+    if current_song == "not playing":
+        current_song = {}
+        current_song['song_name'] = "NONE"
+    return render_template('main.html', current_song=current_song, image_url = image)
 
 @app.route('/login', methods=['GET', 'POST'])
 
