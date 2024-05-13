@@ -35,6 +35,8 @@ class Spotify:
             track = response.json()
             if track['currently_playing_type'] == 'ad': #ad running
                 return "not playing"
+            elif track['currently_playing_type'] == 'episode':
+                return "not playing"
             if track and 'item' in track and track['item']:
                 return {
                     'song_name': track['item']['name'],
