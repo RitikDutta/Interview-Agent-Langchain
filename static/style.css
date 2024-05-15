@@ -8,25 +8,31 @@ body {
 }
 
 .bg_img{
-    background-image: url('/static/jobin.jpg');
-    background-size: cover;
+    background-image: url('/static/images/interview_ready_bg.png');
+/*    background-size: cover;*/
     background-repeat: no-repeat;
     background-attachment: fixed;
-    background-size: 100% auto;
-    background-color: #1385b9;
-
+    background-color: #f3f3fa;
+/*    background-size: 100% auto;*/
+    background-position: center center; /* Horizontally and vertically centers the background */
 }
 
-.login_button{
-    font-family: Rubik Doodle Shadow;
-    font-size: 10em;
-    position: absolute;
-    top: 33%;
-    bottom: 5%;
-    left: 45%;
-    right: 5%;
-    color: white;
+.centered-image {
+  position: absolute;  /* Absolute positioning relative to its nearest positioned ancestor */
+  top: 50%;            /* Position the top edge of the image at the center of the parent */
+  left: 50%;           /* Position the left edge of the image at the center of the parent */
+  transform: translate(-50%, -50%); /* Offset the image back by half its own width and height to center it */
+  display: block;      /* Block display to allow for width and height adjustments if needed */
+  width: 50vw;         /* Sets width to 50% of the viewport width */
+  height: auto;        /* Auto height to maintain aspect ratio */
+  min-width: 300px;    /* Minimum width to ensure the image does not become too small */
+  max-width: 95%;      /* Limit the maximum width to avoid overflowing the viewport */
 }
+
+
+
+
+
 .container {
     width: 80%;
     margin: auto;
