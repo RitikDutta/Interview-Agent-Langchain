@@ -17,17 +17,7 @@ body {
     background-position: center center; /* Horizontally and vertically centers the background */
 }
 
-.centered-image {
-  position: absolute;  /* Absolute positioning relative to its nearest positioned ancestor */
-  top: 50%;            /* Position the top edge of the image at the center of the parent */
-  left: 50%;           /* Position the left edge of the image at the center of the parent */
-  transform: translate(-50%, -50%); /* Offset the image back by half its own width and height to center it */
-  display: block;      /* Block display to allow for width and height adjustments if needed */
-  width: 50vw;         /* Sets width to 50% of the viewport width */
-  height: auto;        /* Auto height to maintain aspect ratio */
-  min-width: 300px;    /* Minimum width to ensure the image does not become too small */
-  max-width: 95%;      /* Limit the maximum width to avoid overflowing the viewport */
-}
+
 
 
 
