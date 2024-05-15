@@ -16,7 +16,7 @@
 		  text-align: center; /* Centers the text horizontally */
 		  width: 100%; /* Ensures the container can expand full width */
 		  position: absolute; /* Allows precise placement in the page */
-		  top: -12px; /* Positions the text at the top of the page */
+		  top: 20%; /* Positions the text at the top of the page */
 		  left: 0; /* Aligns the text block to the left edge, combined with width: 100% centers it */
 		  margin-top: 0; /* Removes any default margin */
 		  color: #3b68bf !important;
@@ -24,19 +24,70 @@
 
 		.login_button {
 		  font-family: "Amatic SC", sans-serif;
-		    font-size: 6em;
-		    position: absolute; /* Positions the button absolutely relative to its nearest positioned ancestor */
-		    bottom: 5%; /* Positions the button 5% from the bottom of the nearest positioned ancestor */
-		    right: 5%; /* Positions the button 5% from the right of the nearest positioned ancestor */
-		    color: #3b68bf; /* Sets the text color to black */
-		  	font-weight: 700;
+		  font-size: 6em;
+		  position: absolute; /* Positions the button absolutely relative to its nearest positioned ancestor */
+/*		  bottom: 5%;*/
+		  top: 2%;
+		  right: 5%;          /* Positions the button 5% from the right of the nearest positioned ancestor */
+		  color: #3b68bf;     /* Sets the text color */
+		  font-weight: 700;
+		  z-index: 10;        /* Ensures the button is on top if they still touch */
 
+		}
+
+.centered-image {
+  position: absolute;  /* Absolute positioning relative to its nearest positioned ancestor */
+  bottom: 0;           /* Position the bottom edge of the image at the bottom of the parent */
+  left: 35%;             /* Position the left edge of the image at the left of the parent */
+  display: block;      /* Block display to allow for width and height adjustments if needed */
+  width: 28%;         /* Sets width to 50% of the viewport width */
+  height: auto;        /* Auto height to maintain aspect ratio */
+  min-width: 300px;    /* Minimum width to ensure the image does not become too small */
+  max-width: 95%;      /* Limit the maximum width to avoid overflowing the viewport */
 }
+
+		.amatic-sc-bold_h3 {
+/*		  font-family: "Amatic SC", sans-serif;*/
+		  font-weight: 700;
+		  font-style: normal;
+		  font-size: 1em;
+		  top: 50%;
+		  text-align: center; /* Centers the text horizontally */
+		  width: 100%; /* Ensures the container can expand full width */
+		  position: absolute; /* Allows precise placement in the page */
+		  left: 0; /* Aligns the text block to the left edge, combined with width: 100% centers it */
+		  margin-top: 0; /* Removes any default margin */
+		  color: #3b68bf !important;
+		}
+
+		/* General styles for the text */
+.text-center {
+    display: flex;
+    align-items: center; /* Aligns vertically */
+    justify-content: center; /* Aligns horizontally */
+    height: 10vh; /* Full viewport height */
+    text-align: center; /* Ensures text is centered horizontally */
+    margin: 0; /* Removes default margin */
+    padding: 0; /* Removes default padding */
+}
+
+/* Media query for viewport widths less than 655 pixels */
+@media (max-width: 655px) {
+   
+    .centered-image {
+    	left: -50px;
+    }
+    .amatic-sc-bold {
+      font-size: 5em;
+    }
+}
+
 
 	</style>
 </head>
 <body class='bg_img'>
 	<h1 class="amatic-sc-bold">Interview Ready</h1>
+	<h3 class="amatic-sc-bold_h3 text-center">Ace Your Next Interview with Confidence: Comprehensive Tools and Coaching to Help You Shine in Every Question</h3>
 	<img src="static/images/interview_ready_chr.png" alt="Descriptive Alt Text" class="centered-image">
 
 	{% block content %}
