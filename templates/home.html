@@ -4,11 +4,43 @@
 	<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 	<meta charset="utf-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1" />
-	<title></title>
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link href="https://fonts.googleapis.com/css2?family=Amatic+SC:wght@400;700&display=swap" rel="stylesheet">
+	<style>
+		.amatic-sc-bold {
+		  font-family: "Amatic SC", sans-serif;
+		  font-weight: 700;
+		  font-style: normal;
+		  font-size: 9em;
+		  text-align: center; /* Centers the text horizontally */
+		  width: 100%; /* Ensures the container can expand full width */
+		  position: absolute; /* Allows precise placement in the page */
+		  top: -12px; /* Positions the text at the top of the page */
+		  left: 0; /* Aligns the text block to the left edge, combined with width: 100% centers it */
+		  margin-top: 0; /* Removes any default margin */
+		  color: #3b68bf !important;
+		}
+
+		.login_button {
+		  font-family: "Amatic SC", sans-serif;
+		    font-size: 6em;
+		    position: absolute; /* Positions the button absolutely relative to its nearest positioned ancestor */
+		    bottom: 5%; /* Positions the button 5% from the bottom of the nearest positioned ancestor */
+		    right: 5%; /* Positions the button 5% from the right of the nearest positioned ancestor */
+		    color: #3b68bf; /* Sets the text color to black */
+		  	font-weight: 700;
+
+}
+
+	</style>
 </head>
 <body class='bg_img'>
+	<h1 class="amatic-sc-bold">Interview Ready</h1>
+	<img src="static/images/interview_ready_chr.png" alt="Descriptive Alt Text" class="centered-image">
+
 	{% block content %}
-	<h1 >Your Personal Mentor</h1>
+	<!-- <h1 >Personal Mentor</h1> -->
 	<a href="{{ url_for('login') }}" class="login_button">Login</a>
 	{% endblock %}	
 </body>
