@@ -4,6 +4,12 @@ from flask import Flask, render_template, request, redirect, url_for, flash, ses
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from database.user_manager import UserManager
 from fun_plugins.spotify import Spotify
+import google.generativeai as genai
+from flask import Flask, request, redirect, url_for, flash
+from werkzeug.utils import secure_filename
+import os
+import google.generativeai as genai
+from dotenv import load_dotenv
 # from database.firestoreCRUD import FirestoreCRUD
 # from firebase_admin import credentials, firestore
 # import firebase_admin
@@ -12,7 +18,18 @@ import os
 from dotenv import load_dotenv
 from pathlib import Path
 import hashlib
+
+
+
 app = Flask(__name__)
+
+
+app.secret_key = 'your_secret_key'
+UPLOAD_FOLDER = 'uploadss'
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
 
 # @app.route('/', methods=['GET', 'POST'])
 # def index():
@@ -26,8 +43,6 @@ app = Flask(__name__)
 
 #     return render_template('index.html', responses=responses, score=score)
 
-app = Flask(__name__)
-app.secret_key = 'your_secret_key'
 
 login_manager = LoginManager()
 login_manager.init_app(app)
@@ -230,8 +245,17 @@ def livec():
             file = request.files.get('cv')
             if file and file.filename:
                 filename = secure_filename(file.filename)
-                print("File uploaded and saved: ", filename)
-                responses, score = assistant.conduct_interview(filename)
+                filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+                file.save(filepath)
+                
+                # Upload to Gemini
+                mime_type = 'image/jpeg' if filename.lower().endswith(('jpg', 'jpeg')) else 'image/png'
+                uploaded_file = assistant.upload_file(filepath, mime_type)
+                
+                # return f"File uploaded to Gemini: {uploaded_file.uri}"
+
+                responses, score = assistant.conduct_interview(uploaded_file)
+                
                 
                 show_feedback = True
             elif 'question' in request.form:
@@ -239,7 +263,7 @@ def livec():
                 responses, score = assistant.conduct_interview(question)
                 show_feedback = True
         except:
-            return "server timeout"
+            return "server timeout please wait 5 second for server to respond and retry"
 
     responses = assistant.get_messages(session.get('name'))
     if responses:
