@@ -124,3 +124,16 @@ class DataScienceInterviewAssistant:
         except json.JSONDecodeError as e:
             print(f"Failed to decode JSON: {e}")
             return None
+
+
+    def upload_file(self, path, mime_type=None):
+        """Uploads the given file to Gemini.
+        See https://ai.google.dev/gemini-api/docs/prompting_with_media
+        """
+        print(f"Attempting to upload file at path: {path} with mime_type: {mime_type}")
+        file = genai.upload_file(path, mime_type=mime_type)
+        print(f"Uploaded file '{file.display_name}' as: {file.uri}")
+        return file
+
+
+
