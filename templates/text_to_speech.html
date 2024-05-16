@@ -32,137 +32,105 @@
         }
     </style>
 </head>
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Text to Speech</title>
-    <style>
-        body {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            height: 100vh;
-            font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 20px;
-        }
-
-        textarea {
-            width: 300px;
-            height: 100px;
-            margin-bottom: 10px;
-        }
-
-        select {
-            width: 310px;
-            padding: 5px;
-            margin-bottom: 10px;
-        }
-
-        button {
-            padding: 10px 20px;
-            cursor: pointer;
-        }
-    </style>
-</head>
 <body>
     <h1>Text to Speech</h1>
-    <textarea id="text-to-speak" placeholder="Type something...">Overfitting occurs when the model cannot generalize and fits too closely to the training dataset instead. Overfitting happens due to several reasons, such as: The training data size is too small and does not contain enough data samples to accurately represent all possible input data values.</textarea>
+    <textarea id="text-to-speak" placeholder="Type something..."></textarea>
     <select id="voice-selection">
         <option value="">Select a voice</option>
     </select>
     <button onclick="speak()">Speak</button>
 
     <script>
-    const textArea = document.getElementById('text-to-speak');
-    const voiceSelect = document.getElementById('voice-selection');
-    let voices = [];
 
-    function populateVoiceList() {
-        voices = speechSynthesis.getVoices();
-        voiceSelect.innerHTML = '<option value="">Select a voice</option>';
-        voices.forEach(voice => {
-            const option = new Option(voice.name + ' (' + voice.lang + ')', voice.name);
-            voiceSelect.appendChild(option);
-        });
+        let utterance;  // Declare this in a broader scope, outside the speak function
+
+function speak() {
+    if (speechSynthesis.speaking) {
+        speechSynthesis.cancel(); // Cancel any ongoing speeches
     }
 
-    if (typeof speechSynthesis !== 'undefined' && speechSynthesis.onvoiceschanged !== undefined) {
-        speechSynthesis.onvoiceschanged = populateVoiceList;
+    if (textArea.value !== '') {
+        utterance = new SpeechSynthesisUtterance(textArea.value); // Use the outer scope variable
+        const selectedVoiceName = voiceSelect.value;
+        utterance.voice = voices.find(voice => voice.name === selectedVoiceName);
+
+        utterance.onend = () => console.log("Finished speaking");
+        utterance.onerror = (event) => console.error("SpeechSynthesisUtterance encountered an error:", event.error);
+
+        speechSynthesis.speak(utterance);
     }
+}
 
-    populateVoiceList(); // Populate voices on load
+        const textArea = document.getElementById('text-to-speak');
+        const voiceSelect = document.getElementById('voice-selection');
+        let voices = [];
 
-    function chunkSubstr(str, size) {
-        const chunks = [];
-        let currentChunk = '';
+        // Function to populate the voice selection dropdown
+        function populateVoiceList() {
+            voices = speechSynthesis.getVoices();
+            voiceSelect.innerHTML = '';
+            voiceSelect.appendChild(new Option('Select a voice', ''));
 
-        // Split text by periods to preserve sentence boundaries
-        str.split('.').forEach(sentence => {
-            if (currentChunk.length + sentence.length > size) {
-                if (currentChunk.length > 0) {
-                    chunks.push(currentChunk + '.');
-                    currentChunk = '';
-                }
-                // Further split long sentences if necessary
-                while (sentence.length > size) {
-                    const cut = sentence.substring(0, size).lastIndexOf(' ');
-                    const segment = sentence.substring(0, cut);
-                    chunks.push(segment);
-                    sentence = sentence.substring(cut + 1);
-                }
-                currentChunk = sentence;
-            } else {
-                currentChunk += (currentChunk.length > 0 ? ' ' : '') + sentence;
+            voices.forEach(voice => {
+                const option = new Option(voice.name + ' (' + voice.lang + ')', voice.name);
+                voiceSelect.appendChild(option);
+            });
+        }
+
+        // Load voices and update the dropdown
+        populateVoiceList();
+        if (speechSynthesis.onvoiceschanged !== undefined) {
+            speechSynthesis.onvoiceschanged = populateVoiceList;
+        }
+
+        // Function to perform the text-to-speech
+        function speak() {
+            if (textArea.value !== '') {
+                const utterance = new SpeechSynthesisUtterance(textArea.value);
+                const selectedVoiceName = voiceSelect.value;
+
+                // Find the selected voice in the list
+                utterance.voice = voices.find(voice => voice.name === selectedVoiceName);
+
+                // Speak the text
+                speechSynthesis.speak(utterance);
             }
-        });
-
-        if (currentChunk.length > 0) {
-            chunks.push(currentChunk + '.');
         }
 
-        return chunks;
+        function speak() {
+    if (speechSynthesis.speaking) {
+        console.log('speechSynthesis already speaking');
+        speechSynthesis.cancel(); // Stop the current speech first, or use pause() as needed
     }
 
-    function speakTextByChunks(textChunks, index = 0) {
-        if (index < textChunks.length) {
-            const chunk = textChunks[index];
-            const utterance = new SpeechSynthesisUtterance(chunk);
-            const selectedVoiceName = voiceSelect.value;
-            console.log(selectedVoiceName)
+    if (textArea.value !== '') {
+        const utterance = new SpeechSynthesisUtterance(textArea.value);
+        const selectedVoiceName = voiceSelect.value;
 
-            utterance.voice = voices.find(voice => voice.name === selectedVoiceName);
+        // Find the selected voice in the list
+        utterance.voice = voices.find(voice => voice.name === selectedVoiceName);
 
-            utterance.onend = () => {
-                console.log("Chunk finished speaking");
-                speakTextByChunks(textChunks, index + 1);
-            };
+        // Optional: Handle end and error events
+        utterance.onend = () => console.log("Finished speaking");
+        utterance.onerror = (event) => console.error("SpeechSynthesisUtterance encountered an error:", event.error);
 
-            utterance.onerror = (event) => {
-                console.error("SpeechSynthesisUtterance encountered an error:", event.error);
-            };
-
-            speechSynthesis.speak(utterance);
-        }
+        // Speak the text
+        speechSynthesis.speak(utterance);
     }
+}
 
-    function speak() {
-        if (speechSynthesis.speaking) {
-            speechSynthesis.cancel(); // Cancel any ongoing speeches
-        }
-
-        if (textArea.value !== '') {
-            const textChunks = chunkSubstr(textArea.value, 200); // Adjust chunk size as needed
-            speakTextByChunks(textChunks);
-        }
-    }
-</script>
+if (typeof speechSynthesis !== 'undefined' && speechSynthesis.onvoiceschanged !== undefined) {
+    speechSynthesis.onvoiceschanged = populateVoiceList;
+}
+utterance.onend = () => console.log("Finished speaking");
+utterance.onerror = (event) => console.error("SpeechSynthesisUtterance encountered an error:", event.error);
 
 
+
+
+
+
+
+    </script>
 </body>
-</html>
-
 </html>
