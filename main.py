@@ -1,4 +1,4 @@
-from flask import Flask, request, render_template
+from flask import Flask, request, render_template, render_template_string
 from my_assistant_gemini import DataScienceInterviewAssistant  # Import your class
 from flask import Flask, render_template, request, redirect, url_for, flash, session
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
@@ -19,6 +19,8 @@ from dotenv import load_dotenv
 from pathlib import Path
 import hashlib
 
+from google.cloud import storage
+
 
 
 app = Flask(__name__)
@@ -27,8 +29,11 @@ app = Flask(__name__)
 app.secret_key = 'your_secret_key'
 UPLOAD_FOLDER = 'uploadss'
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
-app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
+BUCKET_NAME = 'asia.artifacts.interview-mentor-408213.appspot.com'
+
+os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = 'interview-mentor-408213-f5ba84c00ba7.json'
+
 
 
 # @app.route('/', methods=['GET', 'POST'])
@@ -42,6 +47,41 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 #         responses, score = assistant.conduct_interview(question)
 
 #     return render_template('index.html', responses=responses, score=score)
+
+def upload_file_to_gemini(path, mime_type=None):
+    """uploads file to Gemini."""
+    try:
+        file = genai.upload_file(path, mime_type=mime_type)
+        log = f"Uploaded file '{file.display_name}' as: {file.uri}"
+        print(log)
+        return file, log
+    except Exception as e:
+        log = f"Failed to upload file to Gemini: {str(e)}"
+        print(log)
+        return None, log
+
+def upload_to_gcs(file, filename):
+    """uploads file to Google Cloud Storage."""
+    try:
+        client = storage.Client()
+        bucket = client.get_bucket(BUCKET_NAME)
+        blob = bucket.blob(filename)
+        blob.upload_from_file(file, content_type=file.content_type)
+        log = f"File uploaded to GCS: {filename}"
+        print(log)
+        return f"gs://{BUCKET_NAME}/{filename}", log
+    except Exception as e:
+        log = f"Failed to upload file to GCS: {str(e)}"
+        print(log)
+        return None, log
+
+def delete_from_gcs(filename):
+    """deletes file from Google Cloud Storage."""
+    client = storage.Client()
+    bucket = client.bucket(BUCKET_NAME)
+    blob = bucket.blob(filename)
+    blob.delete()
+
 
 
 login_manager = LoginManager()
@@ -236,24 +276,36 @@ def livec():
     if preference['language'] == 'English':
         assistant = DataScienceInterviewAssistant(instruction="instructions.txt", current_user=current_user.id)
     elif preference['language'] == 'Hindi':
-        assistant = DataScienceInterviewAssistant(instruction="instructions_hindi.txt", current_user=current_user.id)    
+        assistant = DataScienceInterviewAssistant(instruction="instructions_hindi.txt", current_user=current_user.id)
     show_feedback = False
 
     if request.method == 'POST':
         try:
-            # Check if a file was uploaded
+            # check if a file uploaded
             file = request.files.get('cv')
             if file and file.filename:
                 filename = secure_filename(file.filename)
-                filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-                file.save(filepath)
                 
-                # Upload to Gemini
+                # upload to GCS
+                gcs_uri = upload_to_gcs(file, filename)
+                
+                # download the file from GCS to local temporary storage
+                temp_filepath = f"/tmp/{filename}"
+                client = storage.Client()
+                bucket = client.bucket(BUCKET_NAME)
+                blob = bucket.blob(filename)
+                blob.download_to_filename(temp_filepath)
+                
+                # upload to Gemini
                 mime_type = 'image/jpeg' if filename.lower().endswith(('jpg', 'jpeg')) else 'image/png'
-                uploaded_file = assistant.upload_file(filepath, mime_type)
+                uploaded_file = upload_file_to_gemini(temp_filepath, mime_type)
                 
-                # return f"File uploaded to Gemini: {uploaded_file.uri}"
-
+                # delete the file from GCS
+                delete_from_gcs(filename)
+                
+                # delete the temporary file
+                os.remove(temp_filepath)
+                
                 responses, score = assistant.conduct_interview(uploaded_file)
                 
                 
@@ -268,10 +320,10 @@ def livec():
     responses = assistant.get_messages(session.get('name'))
     if responses:
         response_last = assistant.convert_json_string_to_dict(responses[0])
-        if response_last['feedback'] =="":
+        if response_last['feedback'] == "":
             show_feedback = False
 
-    print("NAME:: ", session.get('name'))
+
     return render_template('chat_ui.html', responses=response_last, show_feedback=show_feedback, name=session.get('name'), preference=preference, test=4)
 
 
