@@ -11,6 +11,7 @@ import os
 
 load_dotenv()
 GOOGLE_API_KEY = os.getenv('GOOGLE_API_KEY')
+genai.configure(api_key=GOOGLE_API_KEY)
 
 
 class DataScienceInterviewAssistant:
@@ -126,14 +127,17 @@ class DataScienceInterviewAssistant:
             return None
 
 
-    def upload_file(self, path, mime_type=None):
-        """Uploads the given file to Gemini.
-        See https://ai.google.dev/gemini-api/docs/prompting_with_media
-        """
-        print(f"Attempting to upload file at path: {path} with mime_type: {mime_type}")
-        file = genai.upload_file(path, mime_type=mime_type)
-        print(f"Uploaded file '{file.display_name}' as: {file.uri}")
-        return file
+    def upload_file_to_gemini(self, path, mime_type=None):
+        """uploads file to Gemini."""
+        try:
+            file = genai.upload_file(path, mime_type=mime_type)
+            log = f"Uploaded file '{file.display_name}' as: {file.uri}"
+            print(log)
+            return file, log
+        except Exception as e:
+            log = f"Failed to upload file to Gemini: {str(e)}"
+            print(log)
+            return None, log
 
 
 
