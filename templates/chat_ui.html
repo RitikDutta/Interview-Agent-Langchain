@@ -313,6 +313,10 @@
                 let imagePath = '{{ url_for("static", filename="images/reactions/") }}' + interviewer + '/' + score + choice + '.png';
                 score1_img.src = imagePath;
                 score1_img.style.display = 'block';
+            }else{
+                let imagePath = '{{ url_for("static", filename="images/reactions/") }}' + interviewer + '/' + 'static' + '.png';
+                score1_img.src = imagePath;
+                score1_img.style.display = 'block';
             }
             
 
@@ -546,6 +550,7 @@ function nextQuestion() {
                     speakTextByChunks(textChunks, index + 1);
                 } else {
                     console.log("All chunks finished speaking.");
+                    console.log({{responses.score}});
                     if (speak_count < 1 && is_score==true){
                         animateScore({{responses.score}});
                         change_reaction();
