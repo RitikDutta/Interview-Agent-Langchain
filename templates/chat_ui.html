@@ -222,6 +222,7 @@
     </style>
 </head>
 <body>
+
 <!-- nav bar -->
 <script>
     console.log(`{{name}}`)
@@ -241,7 +242,7 @@
     <div id="initial-stage" class="container" style="{{ 'display: none;' if show_feedback else 'display: block;' }}">
         <button id="speak_button" onclick='speak(document.getElementById("text-to-speak").textContent, false)'>Speak</button>
         <h1 id="text-to-speak" class="question">{{ responses.next_question }}</h1>
-        <form method="post" id="response-form" enctype="multipart/form-data">
+        <form onsubmit="disableButton()" method="post" id="response-form" enctype="multipart/form-data">
             <textarea id="question" name="question" placeholder="Type your response..."></textarea>
             <div class="buttons">
                 <!-- Update to use input type file for uploading CV -->
@@ -252,7 +253,14 @@
             </div>
         </form>
     </div>
-
+    <!--  disable form when submit clicked-->
+    <script>
+        function disableButton() {
+            var btn = document.getElementById('submit-btn');
+            btn.disabled = true;
+            btn.value = 'Submitting...';
+        }
+    </script>
 
 
     <!-- After User Response - Feedback and Score -->
@@ -273,6 +281,32 @@
 <div>
     <img id="score1" class="score_image" src="{{ url_for('static', filename='images/reactions/' ~ preference.interviewer ~ '/static.png') }}" alt="10">
 </div>
+
+<script>
+        function resizeImageBasedOnText() {
+            const textElement = document.getElementById('text-to-speak');
+            const imageElement = document.getElementById('score1');
+
+            if (textElement && imageElement) {
+                const textLength = textElement.innerText.length;
+
+                let newHeight = 35; 
+
+                if (textLength > 200) {
+                    newHeight = 25; // Decrease height if a lot of text
+                } else if (textLength > 100) {
+                    newHeight = 30; // Slightly decrease height if moderate text
+                }
+
+                // Apply the new height to the image
+                imageElement.style.height = newHeight + 'vh';
+            }
+        }
+
+        // Ensure the function runs at appropriate times
+        window.onload = resizeImageBasedOnText;
+        window.onresize = resizeImageBasedOnText; // Optional, in case text changes dynamically or you want to adjust during resizing
+    </script>
 
 <script>
     console.log(`{{test}}`)
@@ -551,7 +585,8 @@ function nextQuestion() {
                 } else {
                     console.log("All chunks finished speaking.");
                     console.log({{responses.score}});
-                    if (speak_count < 1 && is_score==true){
+
+                    if (speak_count < 1 && is_score==true && ! (`{{responses.score}}` == "")){
                         animateScore({{responses.score}});
                         change_reaction();
                         speak_count = speak_count+1;
