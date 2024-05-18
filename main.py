@@ -292,13 +292,16 @@ def livec():
             return f"server timeout please wait 5 second for server to respond and retry {e}"
  
     responses = assistant.get_messages(session.get('name'))
-    if responses:
-        response_last = assistant.convert_json_string_to_dict(responses[0])
-        if response_last['feedback'] == "":
-            show_feedback = False
+    try:
+        if responses:
+            response_last = assistant.convert_json_string_to_dict(responses[0])
+            if response_last['feedback'] == "":
+                show_feedback = False
+    except TypeError:
+        return "Type Error"
 
 
-    return render_template('chat_ui.html', responses=response_last, show_feedback=show_feedback, name=session.get('name'), preference=preference, test=4)
+    return render_template('chat_ui.html', responses=response_last, show_feedback=show_feedback, name=session.get('name'), preference=preference, test="4")
 
 
 
