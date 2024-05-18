@@ -18,8 +18,9 @@ import os
 from dotenv import load_dotenv
 from pathlib import Path
 import hashlib
-
+from file_handler.google_cloud_storage import Handler
 from google.cloud import storage
+
 
 
 
@@ -27,14 +28,15 @@ app = Flask(__name__)
 
 
 app.secret_key = 'your_secret_key'
-UPLOAD_FOLDER = 'uploadss'
-ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg'}
 
 BUCKET_NAME = 'asia.artifacts.interview-mentor-408213.appspot.com'
 
 os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = 'interview-mentor-408213-f5ba84c00ba7.json'
 
-
+def allowed_file(filename):
+    return '.' in filename and \
+           filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 # @app.route('/', methods=['GET', 'POST'])
 # def index():
@@ -48,39 +50,6 @@ os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = 'interview-mentor-408213-f5ba84c0
 
 #     return render_template('index.html', responses=responses, score=score)
 
-def upload_file_to_gemini(path, mime_type=None):
-    """uploads file to Gemini."""
-    try:
-        file = genai.upload_file(path, mime_type=mime_type)
-        log = f"Uploaded file '{file.display_name}' as: {file.uri}"
-        print(log)
-        return file, log
-    except Exception as e:
-        log = f"Failed to upload file to Gemini: {str(e)}"
-        print(log)
-        return None, log
-
-def upload_to_gcs(file, filename):
-    """uploads file to Google Cloud Storage."""
-    try:
-        client = storage.Client()
-        bucket = client.get_bucket(BUCKET_NAME)
-        blob = bucket.blob(filename)
-        blob.upload_from_file(file, content_type=file.content_type)
-        log = f"File uploaded to GCS: {filename}"
-        print(log)
-        return f"gs://{BUCKET_NAME}/{filename}", log
-    except Exception as e:
-        log = f"Failed to upload file to GCS: {str(e)}"
-        print(log)
-        return None, log
-
-def delete_from_gcs(filename):
-    """deletes file from Google Cloud Storage."""
-    client = storage.Client()
-    bucket = client.bucket(BUCKET_NAME)
-    blob = bucket.blob(filename)
-    blob.delete()
 
 
 
@@ -281,42 +250,47 @@ def livec():
 
     if request.method == 'POST':
         try:
+            handler = Handler()
+            
             # check if a file uploaded
             file = request.files.get('cv')
-            if file and file.filename:
-                filename = secure_filename(file.filename)
+            # handling the file uploading
+            if file:
+                if allowed_file(file.filename):
+                    filename = secure_filename(file.filename)
+                    
+                    # upload to GCS
+                    gcs_uri = handler.upload_to_gcs(file, filename)
+                    
+                    # download the file from GCS to local temporary storage
+                    temp_filepath = f"/tmp/{filename}"
+                    client = storage.Client()
+                    bucket = client.bucket(BUCKET_NAME)
+                    blob = bucket.blob(filename)
+                    blob.download_to_filename(temp_filepath)
+                    
+                    # upload to Gemini
+                    mime_type = 'image/jpeg' if filename.lower().endswith(('jpg', 'jpeg')) else 'image/png'
+                    uploaded_file = assistant.upload_file_to_gemini(temp_filepath, mime_type)
+                    
+                    # delete the file from GCS
+                    handler.delete_from_gcs(filename)
+                    
+                    # delete the temporary file
+                    os.remove(temp_filepath)
+                    
+                    responses, score = assistant.conduct_interview(uploaded_file)
+                    show_feedback = True
+                else:
+                    return "NOT ALLOWED"    
                 
-                # upload to GCS
-                gcs_uri = upload_to_gcs(file, filename)
-                
-                # download the file from GCS to local temporary storage
-                temp_filepath = f"/tmp/{filename}"
-                client = storage.Client()
-                bucket = client.bucket(BUCKET_NAME)
-                blob = bucket.blob(filename)
-                blob.download_to_filename(temp_filepath)
-                
-                # upload to Gemini
-                mime_type = 'image/jpeg' if filename.lower().endswith(('jpg', 'jpeg')) else 'image/png'
-                uploaded_file = upload_file_to_gemini(temp_filepath, mime_type)
-                
-                # delete the file from GCS
-                delete_from_gcs(filename)
-                
-                # delete the temporary file
-                os.remove(temp_filepath)
-                
-                responses, score = assistant.conduct_interview(uploaded_file)
-                
-                
-                show_feedback = True
             elif 'question' in request.form:
                 question = request.form['question']
                 responses, score = assistant.conduct_interview(question)
                 show_feedback = True
-        except:
-            return "server timeout please wait 5 second for server to respond and retry"
-
+        except Exception as e:
+            return f"server timeout please wait 5 second for server to respond and retry {e}"
+ 
     responses = assistant.get_messages(session.get('name'))
     if responses:
         response_last = assistant.convert_json_string_to_dict(responses[0])
