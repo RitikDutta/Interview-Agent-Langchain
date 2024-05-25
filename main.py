@@ -152,7 +152,7 @@ def login():
                     # print(perference.language)
                     if perference['interviewer']==None or perference['language']==None:
                         return redirect(url_for('settings'))
-                    return redirect(url_for('profile'))
+                    return redirect(url_for('livec'))
                 else:
                     return render_template('user_present.html')
             # login
@@ -169,7 +169,7 @@ def login():
                     # print(perference.language)
                     if perference['interviewer']==None or perference['language']==None:
                         return redirect(url_for('settings'))
-                    return redirect(url_for('profile'))
+                    return redirect(url_for('livec'))
                 else:
                     return render_template('user_not_present.html')
             else:
@@ -184,7 +184,7 @@ def login():
             # print(perference.language)
             if perference['interviewer']==None or perference['language']==None:
                 return redirect(url_for('settings'))
-            return redirect(url_for('profile'))
+            return redirect(url_for('livec'))
                
     return render_template('login.html', ids = 'random_ID')
 
@@ -297,7 +297,11 @@ def livec():
             response_last = assistant.convert_json_string_to_dict(responses[0])
             if response_last['feedback'] == "":
                 show_feedback = False
+        print(response_last)
+        print("TYPE", type(response_last))
     except TypeError:
+        print(response_last)
+        print("TYPE", type(response_last))
         return "Type Error"
 
 
@@ -327,8 +331,17 @@ def settings():
 @login_required
 def confirmation():
     # Retrieve preferences from session
+
+    preference = get_user_preference(current_user.id)
+    if preference['language'] == 'English':
+        assistant = DataScienceInterviewAssistant(instruction="instructions.txt", current_user=current_user.id)
+    elif preference['language'] == 'Hindi':
+        assistant = DataScienceInterviewAssistant(instruction="instructions_hindi.txt", current_user=current_user.id)
+
     interviewer = session.pop('type', None)
     language = session.pop('language', None)
+    assistant.init_chat(language)
+    print("CHAT INIT FROM MAIN")
     return render_template('confirmation.html', interviewer=interviewer, language=language)
 
 
