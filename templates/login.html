@@ -429,6 +429,13 @@ footer a:hover {
     left: 50%;
   }
 }
+
+.hint {
+            font-size: 0.7em;
+            color: gray;
+            text-align: center;
+            white-space: nowrap;
+        }
   </style>
 </head>
 <body>
@@ -447,6 +454,7 @@ footer a:hover {
             <div class="input-field">
               <i class="fas fa-lock"></i>
               <input type="password" placeholder="Password" name="password" id="password" />
+
             </div>
             <input type="submit" name="form_action" value="login_submit" class="btn solid" />
             <p class="social-text">Or Sign in with social platforms</p>
@@ -490,6 +498,8 @@ footer a:hover {
             <div class="input-field">
               <i class="fas fa-lock"></i>
               <input type="password" placeholder="Password" name="password" id="password" />
+              <div class="hint">Your Password is secured with hashing techniques.</div>
+
             </div>
             <input  type="submit" class="btn" name="form_action" value="signup_submit"/>
           </form>
