@@ -351,7 +351,9 @@ def store_preference(interviewer, language):
     user_manager.add_or_update_user_setting(user_id = current_user.id,interviewer=interviewer, language=language)
     
 
-
+@app.route('/tts', methods=['GET', 'POST'])
+def tts():
+    return render_template('text_to_speech.html')
 
 
 @app.route('/logout')
