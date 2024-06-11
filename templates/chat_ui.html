@@ -398,49 +398,59 @@
 
 <!-- speech recognition -->
 <script>
-        let toggleBtn = document.getElementById("toggle-btn");
-        let textarea = document.getElementById("question");
-        let isRecording = false;
-        let speechRecognition = window.webkitSpeechRecognition || window.SpeechRecognition;
-        let recognizer = new speechRecognition();
+    let toggleBtn = document.getElementById("toggle-btn");
+    let textarea = document.getElementById("question");
+    let isRecording = false;
+    let speechRecognition = window.webkitSpeechRecognition || window.SpeechRecognition;
+    let recognizer = new speechRecognition();
+    recognizer.lang = "en-US";
+
+    if (`{{preference.language}}`=='English'){
         recognizer.lang = "en-US";
+    }
+    else if (`{{preference.language}}`=='Hindi'){
+        recognizer.lang = "hi";
+    }
+    recognizer.continuous = true;
+    recognizer.interimResults = true;
 
-        if (`{{preference.language}}`=='English'){
-            recognizer.lang = "en-US";
-        }
-        else if (`{{preference.language}}`=='Hindi'){
-            recognizer.lang = "hi";
-        }
-        recognizer.continuous = true;
-        recognizer.interimResults = true;
+    let finalTranscript = "";
 
-        toggleBtn.addEventListener("click", function() {
-            if (!isRecording) {
-                recognizer.start();
-                toggleBtn.textContent = "Listening";
-                show_listening_pose();
-                toggleBtn.classList.add("recording");
+    toggleBtn.addEventListener("click", function() {
+        if (!isRecording) {
+            recognizer.start();
+            toggleBtn.textContent = "Listening";
+            show_listening_pose();
+            toggleBtn.classList.add("recording");
+        } else {
+            recognizer.stop();
+            toggleBtn.textContent = "Not Listening";
+            toggleBtn.classList.remove("recording");
+            score_static_pose();
+            // Add a space when stopping the recognition
+            finalTranscript += " ";
+        }
+        isRecording = !isRecording;
+    });
+
+    recognizer.onresult = function(event) {
+        let interimTranscript = "";
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+            let transcript = event.results[i][0].transcript;
+            if (event.results[i].isFinal) {
+                finalTranscript += transcript;
             } else {
-                recognizer.stop();
-                toggleBtn.textContent = "Not Listening";
-                toggleBtn.classList.remove("recording");
-                score_static_pose();
+                interimTranscript += transcript;
             }
-            isRecording = !isRecording;
-        });
+        }
+        textarea.value = finalTranscript + interimTranscript;
+    };
 
-        recognizer.onresult = function(event) {
-            let results = event.results;
-            let transcript = Array.from(results)
-                .map(result => result[0].transcript)
-                .join('');
-            textarea.value = transcript;
-        };
+    recognizer.onerror = function(event) {
+        console.error("Speech recognition error", event.error);
+    };
+</script>
 
-        recognizer.onerror = function(event) {
-            console.error("Speech recognition error", event.error);
-        };
-    </script>
 
 <script>
 
