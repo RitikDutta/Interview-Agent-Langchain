@@ -151,3 +151,9 @@ class UserManager:
             return user_data['chat'].get('chat')
         return None
     
+    def reset_chat_and_preference(self, user_id):
+        user_data = self.firestore_crud.read_document(user_id)
+        if user_data:
+            user_data['chat'] = {}
+            user_data['preference'] = {}
+            self.firestore_crud.update_document(user_id, user_data)
