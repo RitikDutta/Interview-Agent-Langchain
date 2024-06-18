@@ -64,6 +64,10 @@ def add_init_user(user_id='x', name='y', email='z', password="_"):
     user_manager = UserManager()
     user_manager.initialize_user(user_id, name, email, password)
 
+def reset_preference(user_id):
+    user_manager = UserManager()
+    user_manager.reset_chat_and_preference(user_id)
+
 def is_user(user_id):
     user_manager = UserManager()
     return user_manager.is_user(user_id)
@@ -165,6 +169,9 @@ def login():
                     login_user(user)
                     session['name'] = user_name
                     flash('Logged in successfully.')
+                    print('user_name', user_id)
+                    if user_id == 'test_account':
+                        reset_preference('test_account')
                     perference = get_user_preference(current_user.id)
                     # print(perference.language)
                     if perference['interviewer']==None or perference['language']==None:
@@ -172,8 +179,22 @@ def login():
                     return redirect(url_for('livec'))
                 else:
                     return render_template('user_not_present.html')
-            else:
-                return render_template('user_not_present.html')
+            # elif request.form['form_action'] == 'test login':
+            #     user_name = 'test_account'
+            #     print("TEST LOGIN IN REQUEST")
+            #     if is_user('test_account'):
+            #         if not check_password('test_account', 'testpassword'):
+            #             return render_template("wrong_password.html")
+            #         login_user(user)
+            #         session['name'] = user_name
+            #         flash('Logged in successfully.')
+            #         perference = get_user_preference(current_user.id)
+            #         # print(perference.language)
+            #         if perference['interviewer']==None or perference['language']==None:
+            #             return redirect(url_for('settings'))
+            #         return redirect(url_for('livec'))
+            #     else:
+            #         return render_template('user_not_present.html')
         except:
             login_user(user)
             session['name'] = user_name
