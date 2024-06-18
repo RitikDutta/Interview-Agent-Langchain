@@ -457,6 +457,7 @@ footer a:hover {
 
             </div>
             <input type="submit" name="form_action" value="login_submit" class="btn solid" />
+            <input type="button" name="form_action" value=" set test login" class="btn solid" onclick="testLogin()" />
             <p class="social-text">Or Sign in with social platforms</p>
             <div class="social-media">
 
@@ -479,8 +480,20 @@ footer a:hover {
                   </div>
 
             </div>
+
             <!--  SIGNUP  -->
           </form>
+
+          <script>
+            function testLogin() {
+                // Set the values of the username and password fields
+                document.getElementById('user_id').value = 'test_account';
+                document.getElementById('password').value = 'test';
+    
+                // Submit the form
+                document.getElementById('loginForm').submit();
+            }
+        </script>
           <form form action="{{ url_for('login') }}" method="post" class="sign-up-form">
             <h2 class="title">Sign up</h2>
             <div class="input-field">
@@ -505,6 +518,7 @@ footer a:hover {
           </form>
         </div>
       </div>
+
 <script>
     function loginAs(user_id, name, email) {
         var form = document.createElement('form');
@@ -569,7 +583,6 @@ footer a:hover {
         </div>
       </div>
     </div>
-
 
 <footer>
         <p>
