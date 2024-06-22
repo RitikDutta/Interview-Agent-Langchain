@@ -1,6 +1,6 @@
 from flask import Flask, request, render_template, render_template_string
 from my_assistant_gemini import DataScienceInterviewAssistant  # Import your class
-from flask import Flask, render_template, request, redirect, url_for, flash, session
+from flask import Flask, render_template, request, redirect, url_for, flash, session, jsonify
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from database.user_manager import UserManager
 from fun_plugins.spotify import Spotify
@@ -20,12 +20,14 @@ from pathlib import Path
 import hashlib
 from file_handler.google_cloud_storage import Handler
 from google.cloud import storage
+from timestream.utils.timestream import Timestream
 
 
 
 
 app = Flask(__name__)
 
+timestreams = Timestream()
 
 app.secret_key = 'your_secret_key'
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg'}
@@ -386,6 +388,30 @@ def logout():
 @app.route('/please_login')
 def please_login():
     return render_template('please_login.html')
+
+
+
+@app.route('/timestream')
+def timestream():
+    return render_template('timestream.html')
+
+@app.route('/display', methods=['POST'])
+def display():
+    youtube_url = request.form['youtube_url']
+    video_id = youtube_url.split("v=")[-1]
+    transcript = timestreams.get_youtube_transcript(video_id)
+    meaningful_timestamps = timestreams.generate_meaningful_timestamps(transcript)
+    embed_url = f"https://www.youtube.com/embed/{video_id}"
+    return render_template('display.html', youtube_url=embed_url, transcript=meaningful_timestamps)
+
+@app.route('/reload_timestamps', methods=['POST'])
+def reload_timestamps():
+    video_id = request.json['video_id']
+    video_id = video_id.split("embed/")[-1]
+    print("ID::: ", video_id)
+    transcript = timestreams.get_youtube_transcript(video_id)
+    meaningful_timestamps = timestreams.generate_meaningful_timestamps(transcript)
+    return jsonify(timestamps=meaningful_timestamps)
 
 if __name__ == '__main__':
     app.run(debug=True)
