@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Display YouTube Video</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: #e9ecef;
+            color: #333;
+            padding: 20px;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+            animation: fadeIn 1s ease-in-out;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        h1, h2 {
+            color: #444;
+        }
+
+        a {
+            text-decoration: none;
+            color: #0066cc;
+            margin-bottom: 20px;
+            font-weight: 500;
+        }
+
+        .container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+            max-width: 1200px;
+        }
+
+        .video-transcript {
+            display: flex;
+            flex-direction: column;
+            width: 100%;
+            height: 100%;
+        }
+
+        .video-container {
+            flex: 0 0 auto;
+            display: flex;
+            justify-content: center;
+            margin-bottom: 20px;
+            position: sticky;
+            top: 20px; /* Adjust as necessary */
+        }
+
+        .transcript-container {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            overflow: hidden; /* Prevent the container itself from scrolling */
+            position: relative;
+        }
+
+        iframe {
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .transcript {
+            background-color: #fff;
+            padding: 20px;
+            padding-top: 50px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            width: 100%;
+            max-width: 600px;
+            height: calc(100vh - 460px); /* Adjust to fit the viewport height, considering other elements */
+            overflow-y: auto; /* Make the text inside scrollable */
+            line-height: 1.6;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            position: relative;
+            transition: background-color 0.3s ease;
+        }
+
+        .transcript.loading {
+            animation: breathing 1.5s infinite;
+        }
+
+        @keyframes breathing {
+            0% {
+                background-color: #e0e0e0;
+            }
+            50% {
+                background-color: #c0c0c0;
+            }
+            100% {
+                background-color: #e0e0e0;
+            }
+        }
+
+        .transcript::-webkit-scrollbar {
+            width: 10px;
+        }
+
+        .transcript::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 8px;
+        }
+
+        .transcript::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 8px;
+        }
+
+        .transcript::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+
+        .timestamp {
+            cursor: pointer;
+            color: #0066cc;
+            margin-right: 10px;
+            font-weight: 500;
+        }
+
+        .timestamp:hover {
+            text-decoration: underline;
+        }
+
+        .transcript-line {
+            margin: 0;
+            padding: 4px 0;
+        }
+
+        .buttons {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            display: flex;
+            gap: 10px;
+        }
+
+        .button {
+            background-color: #0066cc;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 8px 12px;
+            cursor: pointer;
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            transition: background-color 0.3s ease, transform 0.3s ease;
+        }
+
+        .button i {
+            margin-right: 5px;
+        }
+
+        .button:hover {
+            background-color: #005bb5;
+            transform: translateY(-2px);
+        }
+
+        .button:active {
+            background-color: #004494;
+            transform: translateY(0);
+        }
+
+        @media (min-width: 768px) {
+            .video-transcript {
+                flex-direction: row;
+            }
+
+            .video-container, .transcript-container {
+                margin-bottom: 0;
+                margin-right: 20px;
+            }
+
+            .transcript {
+                height: calc(70vh - 40px); /* Adjust as necessary for larger screens */
+            }
+        }
+    </style>
+    <script>
+        function seekTo(seconds) {
+            var iframe = document.getElementById('youtube-iframe');
+            iframe.src = iframe.src.split('?')[0] + '?start=' + seconds + '&autoplay=1';
+        }
+
+        function parseTimeToSeconds(time) {
+            var parts = time.split(':');
+            var seconds = 0;
+            if (parts.length === 3) {
+                seconds = parseInt(parts[0]) * 3600 + parseInt(parts[1]) * 60 + parseInt(parts[2]);
+            } else if (parts.length === 2) {
+                seconds = parseInt(parts[0]) * 60 + parseInt(parts[1]);
+            } else if (parts.length === 1) {
+                seconds = parseInt(parts[0]);
+            }
+            return seconds;
+        }
+
+        function copyTranscript() {
+            const transcript = document.querySelector('.transcript').innerText;
+            navigator.clipboard.writeText(transcript).then(() => {
+            }).catch(err => {
+                console.error('Failed to copy: ', err);
+            });
+        }
+
+        async function reloadTimestamps() {
+            const videoId = "{{ youtube_url.split('v=')[-1] }}";
+            const transcriptContainer = document.querySelector('.transcript');
+            transcriptContainer.classList.add('loading');
+
+            const response = await fetch('/reload_timestamps', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ video_id: videoId })
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                transcriptContainer.innerHTML = `
+                    <div class="buttons">
+                        <button class="button" onclick="reloadTimestamps()">
+                            <i class="fas fa-sync-alt"></i> Reload
+                        </button>
+                        <button class="button" onclick="copyTranscript()">
+                            <i class="fas fa-copy"></i> Copy
+                        </button>
+                    </div>
+                ` + data.timestamps.map(line => `
+                    <div class="transcript-line">
+                        <span class="timestamp" onclick="seekTo(parseTimeToSeconds('${line.split(' ')[0]}'))">${line.split(' ')[0]}</span> ${line.split(' ').slice(1).join(' ')}
+                    </div>
+                `).join('');
+            } else {
+                console.error('Failed to reload timestamps');
+            }
+
+            transcriptContainer.classList.remove('loading');
+        }
+    </script>
+</head>
+<body>
+    <h1>Here is your video:</h1>
+    <div class="container">
+        <a href="{{ url_for('timestream') }}">Go back</a>
+        <div class="video-transcript">
+            <div class="video-container">
+                <iframe id="youtube-iframe" width="560" height="315" src="{{ youtube_url }}" frameborder="0" allowfullscreen></iframe>
+            </div>
+            <div class="transcript-container">
+                <div class="transcript">
+                    <div class="buttons">
+                        <button class="button" onclick="reloadTimestamps()">
+                            <i class="fas fa-sync-alt"></i> Reload
+                        </button>
+                        <button class="button" onclick="copyTranscript()">
+                            <i class="fas fa-copy"></i> Copy
+                        </button>
+                    </div>
+                    {% for line in transcript %}
+                        {% set time = line.split(' ', 1)[0] %}
+                        {% set text = line.split(' ', 1)[1] %}
+                        <div class="transcript-line">
+                            <span class="timestamp" onclick="seekTo(parseTimeToSeconds('{{ time }}'))">{{ time }}</span> {{ text }}
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
