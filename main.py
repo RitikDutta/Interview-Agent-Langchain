@@ -395,9 +395,12 @@ def please_login():
 def timestream():
     return render_template('timestream.html')
 
-@app.route('/display', methods=['POST'])
+@app.route('/display', methods=['GET', 'POST'])
 def display():
-    youtube_url = request.form['youtube_url']
+    if request.method == 'POST':
+        youtube_url = request.form['youtube_url']
+    else:  # GET request
+        youtube_url = request.args.get('var1')
     video_id = timestreams.get_youtube_video_id(youtube_url)
     transcript = timestreams.get_youtube_transcript(video_id)
     meaningful_timestamps = timestreams.generate_meaningful_timestamps(transcript)
@@ -407,7 +410,7 @@ def display():
 @app.route('/reload_timestamps', methods=['POST'])
 def reload_timestamps():
     video_id = request.json['video_id']
-    video_id = timestreams.get_youtube_video_id(youtube_url)
+    video_id = timestreams.get_youtube_video_id(video_id)
     print("ID::: ", video_id)
     transcript = timestreams.get_youtube_transcript(video_id)
     meaningful_timestamps = timestreams.generate_meaningful_timestamps(transcript)
