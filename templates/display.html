@@ -64,14 +64,14 @@
             justify-content: center;
             margin-bottom: 20px;
             position: sticky;
-            top: 20px; /* Adjust as necessary */
+            top: 20px;
         }
 
         .transcript-container {
             flex: 1;
             display: flex;
             justify-content: center;
-            overflow: hidden; /* Prevent the container itself from scrolling */
+            overflow: hidden;
             position: relative;
         }
 
@@ -89,8 +89,8 @@
             border-radius: 8px;
             width: 100%;
             max-width: 600px;
-            height: calc(100vh - 460px); /* Adjust to fit the viewport height, considering other elements */
-            overflow-y: auto; /* Make the text inside scrollable */
+            height: calc(100vh - 460px);
+            overflow-y: auto;
             line-height: 1.6;
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
             position: relative;
@@ -193,14 +193,40 @@
             }
 
             .transcript {
-                height: calc(70vh - 40px); /* Adjust as necessary for larger screens */
+                height: calc(70vh - 40px);
             }
         }
     </style>
     <script>
+        var youTubePlayer;
+        
+        var vidElement = document.getElementById("youtube-iframe");
+
+        function onYouTubeIframeAPIReady() {
+            var videoId = "{{ youtube_url}}";
+
+            youTubePlayer = new YT.Player('youtube-iframe', {
+                videoId: videoId,
+                playerVars: { 'autoplay': 0, 'controls': 1 },
+                events: {
+                    'onReady': onPlayerReady,
+                    'onError': onPlayerError
+                }
+            });
+        }
+
+        function onPlayerReady(event) {
+            event.target.playVideo();
+        }
+
+        function onPlayerError(event) {
+            console.error("YouTube Player Error:", event.data);
+        }
+
         function seekTo(seconds) {
-            var iframe = document.getElementById('youtube-iframe');
-            iframe.src = iframe.src.split('?')[0] + '?start=' + seconds + '&autoplay=1';
+            if (youTubePlayer && youTubePlayer.seekTo) {
+                youTubePlayer.seekTo(seconds, true);
+            }
         }
 
         function parseTimeToSeconds(time) {
@@ -219,6 +245,7 @@
         function copyTranscript() {
             const transcript = document.querySelector('.transcript').innerText;
             navigator.clipboard.writeText(transcript).then(() => {
+                alert('Transcript copied to clipboard.');
             }).catch(err => {
                 console.error('Failed to copy: ', err);
             });
@@ -259,15 +286,20 @@
 
             transcriptContainer.classList.remove('loading');
         }
+
+        // Load YouTube IFrame API
+        var tag = document.createElement('script');
+        tag.src = "https://www.youtube.com/iframe_api";
+        var firstScriptTag = document.getElementsByTagName('script')[0];
+        firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
     </script>
 </head>
 <body>
-    <!-- <h1>Here is your video:</h1> -->
     <div class="container">
         <a href="{{ url_for('timestream') }}">Go back</a>
         <div class="video-transcript">
             <div class="video-container">
-                <iframe id="youtube-iframe" width="560" height="315" src="{{ youtube_url }}" frameborder="0" allowfullscreen></iframe>
+                <div id="youtube-iframe"></div>
             </div>
             <div class="transcript-container">
                 <div class="transcript">
