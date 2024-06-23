@@ -405,7 +405,7 @@ def display():
     transcript = timestreams.get_youtube_transcript(video_id)
     meaningful_timestamps = timestreams.generate_meaningful_timestamps(transcript)
     embed_url = f"https://www.youtube.com/embed/{video_id}"
-    return render_template('display.html', youtube_url=embed_url, transcript=meaningful_timestamps)
+    return render_template('display.html', youtube_url=video_id, transcript=meaningful_timestamps)
 
 @app.route('/reload_timestamps', methods=['POST'])
 def reload_timestamps():
