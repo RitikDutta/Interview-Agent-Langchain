@@ -410,8 +410,8 @@ def display():
 @app.route('/reload_timestamps', methods=['POST'])
 def reload_timestamps():
     video_id = request.json['video_id']
-    video_id = timestreams.get_youtube_video_id(video_id)
-    print("ID::: ", video_id)
+    print("ID::: ", type(video_id))
+    # video_id = timestreams.get_youtube_video_id(video_id)
     transcript = timestreams.get_youtube_transcript(video_id)
     meaningful_timestamps = timestreams.generate_meaningful_timestamps(transcript)
     return jsonify(timestamps=meaningful_timestamps)
