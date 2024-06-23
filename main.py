@@ -400,7 +400,7 @@ def display():
     if request.method == 'POST':
         youtube_url = request.form['youtube_url']
     else:  # GET request
-        youtube_url = request.args.get('var1')
+        youtube_url = request.args.get('url')
     video_id = timestreams.get_youtube_video_id(youtube_url)
     transcript = timestreams.get_youtube_transcript(video_id)
     meaningful_timestamps = timestreams.generate_meaningful_timestamps(transcript)
