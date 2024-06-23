@@ -398,7 +398,7 @@ def timestream():
 @app.route('/display', methods=['POST'])
 def display():
     youtube_url = request.form['youtube_url']
-    video_id = youtube_url.split("v=")[-1]
+    video_id = timestreams.get_youtube_video_id(youtube_url)
     transcript = timestreams.get_youtube_transcript(video_id)
     meaningful_timestamps = timestreams.generate_meaningful_timestamps(transcript)
     embed_url = f"https://www.youtube.com/embed/{video_id}"
@@ -407,7 +407,7 @@ def display():
 @app.route('/reload_timestamps', methods=['POST'])
 def reload_timestamps():
     video_id = request.json['video_id']
-    video_id = video_id.split("embed/")[-1]
+    video_id = timestreams.get_youtube_video_id(youtube_url)
     print("ID::: ", video_id)
     transcript = timestreams.get_youtube_transcript(video_id)
     meaningful_timestamps = timestreams.generate_meaningful_timestamps(transcript)
