@@ -338,9 +338,25 @@
             transcriptContainer.classList.remove('loading');
         }
 
-        function submitComment() {
+        async function submitComment() {
+            const videoId = "{{ youtube_url.split('v=')[-1] }}";
             var inputText = document.getElementById('inputText').value;
-            alert('Comment submitted: ' + inputText);
+
+            const response = await fetch('/user_query', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ user_input: inputText, video_id: videoId })
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                const modifiedResponse = data.response;
+                document.getElementById('inputLabel').innerText = modifiedResponse;
+            } else {
+                console.error('Failed to submit comment');
+            }
         }
 
         // Load YouTube IFrame API
