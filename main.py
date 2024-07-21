@@ -425,7 +425,7 @@ def reload_timestamps():
 def user_query():
     video_id = request.json['video_id']
     video_id = video_id.split("embed/")[-1]
-    transcript = timestream.get_youtube_transcript(video_id)
+    transcript = timestreams.get_youtube_transcript(video_id)
     
     data = request.json
     print(data)
