@@ -403,7 +403,9 @@ def display():
         youtube_url = request.args.get('url')
     video_id = timestreams.get_youtube_video_id(youtube_url)
     transcript = timestreams.get_youtube_transcript(video_id)
-    meaningful_timestamps = timestreams.generate_meaningful_timestamps(transcript)
+    # meaningful_timestamps = timestreams.generate_meaningful_timestamps(transcript)
+    meaningful_timestamps = ['initial']
+    
     embed_url = f"https://www.youtube.com/embed/{video_id}"
     return render_template('display.html', youtube_url=video_id, transcript=meaningful_timestamps)
 
@@ -413,8 +415,23 @@ def reload_timestamps():
     print("ID::: ", type(video_id))
     # video_id = timestreams.get_youtube_video_id(video_id)
     transcript = timestreams.get_youtube_transcript(video_id)
-    meaningful_timestamps = timestreams.generate_meaningful_timestamps(transcript)
+    # meaningful_timestamps = timestreams.generate_meaningful_timestamps(transcript)
+    meaningful_timestamps = ['reload']
+
     return jsonify(timestamps=meaningful_timestamps)
+
+
+@app.route('/user_query', methods=['POST'])
+def user_query():
+    video_id = request.json['video_id']
+    video_id = video_id.split("embed/")[-1]
+    transcript = timestream.get_youtube_transcript(video_id)
+    
+    data = request.json
+    print(data)
+    user_input = data.get('user_input')
+    response = user_input + "_abc"
+    return jsonify({"response": response})
 
 if __name__ == '__main__':
     app.run(debug=True)
