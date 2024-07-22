@@ -292,6 +292,14 @@
             }
             return seconds;
         }
+        function convertTimePatternsToClickable(text) {
+            const timePattern = /\b\d{1,2}:\d{2}(?::\d{2})?\b/g;
+            return text.replace(timePattern, (match) => {
+                const seconds = parseTimeToSeconds(match);
+                return `<span class="timestamp" onclick="seekTo(${seconds})">${match}</span>`;
+            });
+        }
+
 
         function copyTranscript() {
             const transcript = document.querySelector('.transcript').innerText;
@@ -373,9 +381,9 @@
             <div class="video-container">
                 <div id="youtube-iframe"></div>
                 <div class="input-container">
-                    <label id="inputLabel">Your Label Here</label>
+                    <label id="inputLabel">Your Query regarding this video</label>
                     <div class="input-wrapper">
-                        <input type="text" id="inputText" placeholder="Enter your comment">
+                        <input type="text" id="inputText" placeholder="Enter Your Query">
                         <button onclick="submitComment()">Submit</button>
                     </div>
                 </div>
