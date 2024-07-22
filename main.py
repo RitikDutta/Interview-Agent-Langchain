@@ -403,8 +403,8 @@ def display():
         youtube_url = request.args.get('url')
     video_id = timestreams.get_youtube_video_id(youtube_url)
     transcript = timestreams.get_youtube_transcript(video_id)
-    # meaningful_timestamps = timestreams.generate_meaningful_timestamps(transcript)
-    meaningful_timestamps = ['initial']
+    meaningful_timestamps = timestreams.generate_meaningful_timestamps(transcript)
+    # meaningful_timestamps = ['initial']
     
     embed_url = f"https://www.youtube.com/embed/{video_id}"
     return render_template('display.html', youtube_url=video_id, transcript=meaningful_timestamps)
@@ -415,8 +415,8 @@ def reload_timestamps():
     print("ID::: ", type(video_id))
     # video_id = timestreams.get_youtube_video_id(video_id)
     transcript = timestreams.get_youtube_transcript(video_id)
-    # meaningful_timestamps = timestreams.generate_meaningful_timestamps(transcript)
-    meaningful_timestamps = ['reload']
+    meaningful_timestamps = timestreams.generate_meaningful_timestamps(transcript)
+    # meaningful_timestamps = ['reload']
 
     return jsonify(timestamps=meaningful_timestamps)
 
@@ -430,8 +430,16 @@ def user_query():
     data = request.json
     print(data)
     user_input = data.get('user_input')
-    response = user_input + "_abc"
+    meaningful_timestamps = timestreams.user_query(transcript, user_input)
+
+    response = meaningful_timestamps
     return jsonify({"response": response})
+
+@app.route('/resume')
+def resume():
+    return render_template('resume.html')
+
+
 
 if __name__ == '__main__':
     app.run(debug=True)
