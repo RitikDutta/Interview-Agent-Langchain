@@ -164,6 +164,23 @@
             }
         }
 
+        .loading {
+    animation: breathing 1.5s infinite;
+}
+
+@keyframes breathing {
+    0% {
+        background-color: #e0e0e0;
+    }
+    50% {
+        background-color: #c0c0c0;
+    }
+    100% {
+        background-color: #e0e0e0;
+    }
+}
+
+
         .transcript::-webkit-scrollbar {
             width: 10px;
         }
@@ -281,24 +298,27 @@
         }
 
         function parseTimeToSeconds(time) {
-            var parts = time.split(':');
-            var seconds = 0;
-            if (parts.length === 3) {
-                seconds = parseInt(parts[0]) * 3600 + parseInt(parts[1]) * 60 + parseInt(parts[2]);
-            } else if (parts.length === 2) {
-                seconds = parseInt(parts[0]) * 60 + parseInt(parts[1]);
-            } else if (parts.length === 1) {
-                seconds = parseInt(parts[0]);
-            }
-            return seconds;
-        }
-        function convertTimePatternsToClickable(text) {
-            const timePattern = /\b\d{1,2}:\d{2}(?::\d{2})?\b/g;
-            return text.replace(timePattern, (match) => {
-                const seconds = parseTimeToSeconds(match);
-                return `<span class="timestamp" onclick="seekTo(${seconds})">${match}</span>`;
-            });
-        }
+    var parts = time.split(':');
+    var seconds = 0;
+    if (parts.length === 3) {
+        seconds = parseInt(parts[0]) * 3600 + parseInt(parts[1]) * 60 + parseInt(parts[2]);
+    } else if (parts.length === 2) {
+        seconds = parseInt(parts[0]) * 60 + parseInt(parts[1]);
+    } else if (parts.length === 1) {
+        seconds = parseInt(parts[0]);
+    }
+    return seconds;
+}
+
+function convertTimePatternsToClickable(text) {
+    text = String(text); // Ensure text is a string
+    const timePattern = /\b\d{1,2}:\d{2}(?::\d{2})?\b/g;
+    return text.replace(timePattern, (match) => {
+        const seconds = parseTimeToSeconds(match);
+        return `<span class="timestamp" onclick="seekTo(${seconds})">${match}</span>`;
+    });
+}
+
 
 
         function copyTranscript() {
@@ -347,25 +367,34 @@
         }
 
         async function submitComment() {
-            const videoId = "{{ youtube_url.split('v=')[-1] }}";
-            var inputText = document.getElementById('inputText').value;
+    const videoId = "{{ youtube_url.split('v=')[-1] }}";
+    const inputText = document.getElementById('inputText').value;
+    const inputLabel = document.getElementById('inputLabel');
+    const q_submit = document.getElementById('q_submit');
 
-            const response = await fetch('/user_query', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ user_input: inputText, video_id: videoId })
-            });
+    // Add the loading animation
+    q_submit.classList.add('loading');
 
-            if (response.ok) {
-                const data = await response.json();
-                const modifiedResponse = data.response;
-                document.getElementById('inputLabel').innerText = modifiedResponse;
-            } else {
-                console.error('Failed to submit comment');
-            }
-        }
+    const response = await fetch('/user_query', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ user_input: inputText, video_id: videoId })
+    });
+
+    if (response.ok) {
+        const data = await response.json();
+        const modifiedResponse = convertTimePatternsToClickable(data.response);
+        inputLabel.innerHTML = modifiedResponse;  // Use innerHTML to render clickable timestamps
+    } else {
+        console.error('Failed to submit comment');
+    }
+
+    // Remove the loading animation
+    q_submit.classList.remove('loading');
+}
+
 
         // Load YouTube IFrame API
         var tag = document.createElement('script');
@@ -384,7 +413,7 @@
                     <label id="inputLabel">Your Query regarding this video</label>
                     <div class="input-wrapper">
                         <input type="text" id="inputText" placeholder="Enter Your Query">
-                        <button onclick="submitComment()">Submit</button>
+                        <button id="q_submit" onclick="submitComment()">Submit</button>
                     </div>
                 </div>
             </div>
