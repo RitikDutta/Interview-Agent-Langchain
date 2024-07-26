@@ -17,7 +17,7 @@
             flex-direction: column;
             align-items: center;
             height: 100vh;
-            overflow: hidden;
+            /* overflow: hidden; */
             animation: fadeIn 1s ease-in-out;
         }
 
@@ -264,6 +264,40 @@
                 height: calc(70vh - 40px);
             }
         }
+        @media (max-width: 768px) {
+            iframe{
+                width: 100%;
+            }
+        }
+        .scrollable-label {
+    max-height: 150px; /* Adjust this height as needed */
+    overflow-y: auto;
+    display: block; /* Ensure the label behaves as a block element */
+    /* border: 1px solid #ccc;  */
+    padding: 5px; /* Optional: Add some padding */
+}
+
+/* Custom scrollbar styles */
+.scrollable-label::-webkit-scrollbar {
+    width: 8px; /* Width of the entire scrollbar */
+}
+
+.scrollable-label::-webkit-scrollbar-track {
+    background: #f1f1f1; /* Color of the scrollbar track */
+    border-radius: 10px; 
+}
+
+.scrollable-label::-webkit-scrollbar-thumb {
+    background-color: #888; /* Color of the scrollbar thumb */
+    border-radius: 10px; 
+    /* border: 2px solid #f1f1f1;  */
+}
+
+.scrollable-label::-webkit-scrollbar-thumb:hover {
+    background-color: #555; /* Color of the scrollbar thumb on hover */
+}
+
+
     </style>
     <script>
         var youTubePlayer;
@@ -410,7 +444,7 @@ function convertTimePatternsToClickable(text) {
             <div class="video-container">
                 <div id="youtube-iframe"></div>
                 <div class="input-container">
-                    <label id="inputLabel">Your Query regarding this video</label>
+                    <label id="inputLabel" class="scrollable-label">Your query result will appear here.</label>                    
                     <div class="input-wrapper">
                         <input type="text" id="inputText" placeholder="Enter Your Query">
                         <button id="q_submit" onclick="submitComment()">Submit</button>
@@ -439,4 +473,13 @@ function convertTimePatternsToClickable(text) {
         </div>
     </div>
 </body>
+<script>
+    document.addEventListener('keydown', function(event) {
+        if (event.key === 'x' || event.key === 'X') {
+            const inputLabel = document.getElementById('inputLabel');
+            const longText = "This is a long text that will be appended to the label to test the scroll functionality. ".repeat(10);
+            inputLabel.innerText += longText;
+        }
+    });
+</script>
 </html>
