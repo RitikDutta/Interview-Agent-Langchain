@@ -20,7 +20,7 @@ class DataScienceInterviewAssistant:
         self.usermanager = UserManager()
         genai.configure(api_key=GOOGLE_API_KEY)
         instructions = self.get_instructions(instructions=instruction)
-        self.model = genai.GenerativeModel('gemini-1.5-pro-latest', system_instruction=instructions)
+        self.model = genai.GenerativeModel('gemini-2.0-flash-exp', system_instruction=instructions)
         chat = self.usermanager.get_chat(self.current_user)
         if chat:
             chat = self.reconstruct_format(chat)

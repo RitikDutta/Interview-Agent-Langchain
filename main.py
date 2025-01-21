@@ -21,6 +21,8 @@ import hashlib
 from file_handler.google_cloud_storage import Handler
 from google.cloud import storage
 from timestream.utils.timestream import Timestream
+import requests
+import json
 
 
 
@@ -400,46 +402,52 @@ def display():
     if request.method == 'POST':
         youtube_url = request.form['youtube_url']
     else:  # GET request
-        youtube_url = request.args.get('url')
+        youtube_url = request.args.get('var1')
     video_id = timestreams.get_youtube_video_id(youtube_url)
-    transcript = timestreams.get_youtube_transcript(video_id)
+    transcript = timestreams.get_youtube_transcript_different_api(video_id)
+    print(type(transcript))
+    print("----------------------transcript------------------------------")
+    print(transcript)
     meaningful_timestamps = timestreams.generate_meaningful_timestamps(transcript)
-    # meaningful_timestamps = ['initial']
-    
     embed_url = f"https://www.youtube.com/embed/{video_id}"
-    return render_template('display.html', youtube_url=video_id, transcript=meaningful_timestamps)
+    return render_template('display.html', youtube_url=embed_url, transcript=meaningful_timestamps)
+
+@app.route('/display2', methods=['GET', 'POST'])
+def display2():
+    # Define the URL and headers
+    url = "https://www.youtube-transcript.io/api/transcripts"
+    headers = {
+        "Authorization": "Basic 678df2f442c5b90111351c2f",
+        "Content-Type": "application/json"
+    }
+
+    # Define the payload
+    payload = {
+        "ids": ["LlTqvapKydk"]
+    }
+
+    # Make the POST request
+    response = requests.post(url, headers=headers, json=payload)
+
+    # Check if the request was successful
+    if response.status_code == 200:
+        response_tr2 = response.json()  # Parse the JSON response
+        print("Response successfully received and parsed!")
+        print(json.dumps(response_tr2, indent=2))  # Pretty-print JSON response
+        return response_tr2
+    else:
+        print(f"Request failed with status code {response.status_code}: {response.text}")
+    return render_template(response.text)
+
 
 @app.route('/reload_timestamps', methods=['POST'])
 def reload_timestamps():
     video_id = request.json['video_id']
-    print("ID::: ", type(video_id))
-    # video_id = timestreams.get_youtube_video_id(video_id)
+    video_id = timestreams.get_youtube_video_id(video_id)
+    print("ID::: ", video_id)
     transcript = timestreams.get_youtube_transcript(video_id)
     meaningful_timestamps = timestreams.generate_meaningful_timestamps(transcript)
-    # meaningful_timestamps = ['reload']
-
     return jsonify(timestamps=meaningful_timestamps)
-
-
-@app.route('/user_query', methods=['POST'])
-def user_query():
-    video_id = request.json['video_id']
-    video_id = video_id.split("embed/")[-1]
-    transcript = timestreams.get_youtube_transcript(video_id)
-    
-    data = request.json
-    print(data)
-    user_input = data.get('user_input')
-    meaningful_timestamps = timestreams.user_query(transcript, user_input)
-
-    response = meaningful_timestamps
-    return jsonify({"response": response})
-
-@app.route('/resume')
-def resume():
-    return render_template('resume.html')
-
-
 
 if __name__ == '__main__':
     app.run(debug=True)
