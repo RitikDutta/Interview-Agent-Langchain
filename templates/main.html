@@ -6,15 +6,9 @@
   </head>
   <body>
     <h1>Welcome to My Website</h1>
-    <p>This is a simple HTML template.</p>
-    <p>Current date and time: {{ current_time }}</p>
-    <p>Random number: {{ random_number }}</p>
-    <p>Random string: {{ random_string }}</p>
-    <p>Random float: {{ random_float }}</p>
-    <p>Random integer: {{ random_integer }}</p>
-    <p>Random boolean: {{ random_boolean }}</p>
-    <p>Random choice from list: {{ random_choice }}</p>
-    <p>Random UUID: {{ random_uuid }}</p>
-    <p>Random color: {{ random_color }}</p>
+    <div style="text-align: center;">
+      <p>This is a simple Flask application.</p> 
+    <a href="{{ url_for('login') }}">Login</a><br>
+    </div>
   </body>
 </html>
