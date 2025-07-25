@@ -6,9 +6,9 @@ from typing import Optional, Dict, Any, List, Literal
 from pydantic import BaseModel, Field, validator
 
 # langchain langraph imports
-from langchain_core.messages import BaseMessage, HumanMessage, AIMessage, SystemMessage, ToolMessage
+from langchain_core.messages import HumanMessage, AIMessage, SystemMessage, ToolMessage
 from langchain_core.tools import tool
-from langchain.graph import StateGraph, MessageState, End, Start
+from langchain.graph import StateGraph, MessageState, END, START
 from langraph.checkpoint.memory import MemorySaver
 
 # Google Gemini imports (LLM Model)
@@ -220,42 +220,19 @@ memory = MemorySaver()
 graph = builder.compile(checkpointer=memory)
 
 # main execution loop
-if __name__ == "__main__":
-    try:
-        display(Image(graph.get_graph(xray=True).draw_mermaid_png()))
-    except Exception:
-        print("Graph visualization failed. Install graphviz and mermaid-cli for visualization.")
-
-    thread_id = str(uuid.uuid4())
-    user_id = "user-interview-001"
+def invoke_agent(user_id: str, thread_id: str, user_message: str) -> str:
+    """ the main entry point for Flask app to interact with the agent"""
     config = {"configurable": {"thread_id": thread_id, "user_id": user_id}}
-    print("--- Starting New Interview Prep Session ---")
-    print(f"User ID: {user_id}\n")
 
-    # agent to start the conversation
-    initial_kickoff = {"messages": [HumanMessage(content="<BEGIN_INTERVIEW>")]}
+    messages = [HumanMessage(content=user_message)]
     
-    initial_response_event = graph.invoke(initial_kickoff, config)
-    
-    if initial_response_event and initial_response_event.get("messages"):
-        agent_greeting = initial_response_event["messages"][-1].content
-        print(f"Agent: {agent_greeting}")
+    # invoking the graph with the user message
+    response_event = graph.invoke(
+        {"messages": messages},
+        config=config)
+
+    #return content of the message
+    if response_event and response_event.get("messages"):
+        return response_event["messages"][-1].content
     else:
-        print("Agent: Hello! Let's get started. What domain are you preparing for?")
-
-
-    while True:
-        user_input = input("\nYou: ")
-        if user_input.lower() in ["quit", "exit"]:
-            print("\nAgent: Great session! Good luck with your interview.")
-            break
-        
-        events = graph.stream({"messages": [HumanMessage(content=user_input)]}, config=config, stream_mode="values")
-        for event in events:
-            message = event["messages"][-1]
-            if isinstance(message, AIMessage) and not message.tool_calls:
-                print(f"\nAgent: {message.content}")
-                
-    print("\n--- Final Interview Profile ---")
-    final_profile = get_profile(user_id)
-    print(final_profile.model_dump_json(indent=2))
+        return "No response from the agent. Please try again later."
