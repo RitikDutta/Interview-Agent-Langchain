@@ -19,5 +19,18 @@ setuptools==68.0.0
 urllib3==2.1.0
 bcrypt==4.1.3
 google-generativeai==0.5.2
-youtube-transcript-api==0.6.2
 
+
+langgraph
+langgraph-sdk
+langgraph-checkpoint-sqlite
+langsmith
+langchain-community
+langchain-core
+langchain-openai
+notebook
+tavily-python
+wikipedia
+trustcall
+langgraph-cli
+langchain-google-genai
