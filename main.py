@@ -22,7 +22,7 @@ from file_handler.google_cloud_storage import Handler
 from google.cloud import storage
 import requests
 import json
-
+from agent import invoke_agent
 
 
 
@@ -388,6 +388,34 @@ def logout():
 @app.route('/please_login')
 def please_login():
     return render_template('please_login.html')
+
+
+@app.route('/langraph')
+def langraph():
+    return render_template('agent_lang.html')
+
+@app.route("/chat", methods=["POST"])
+def chat():
+    """API endpoint to handle chat messages."""
+    data = request.json
+    
+    # Validate incoming data
+    user_id = data.get("user_id")
+    thread_id = data.get("thread_id")
+    user_message = data.get("message")
+
+    if not all([user_id, thread_id, user_message]):
+        return jsonify({"error": "Missing user_id, thread_id, or message"}), 400
+
+    print(f"Received message from user '{user_id}': {user_message}")
+
+    # Call the agent logic
+    try:
+        agent_response = invoke_agent(user_id, thread_id, user_message)
+        return jsonify({"response": agent_response})
+    except Exception as e:
+        print(f"An error occurred in the agent: {e}")
+        return jsonify({"error": "An internal error occurred in the agent."}), 500
 
 if __name__ == '__main__':
     app.run(debug=True)
