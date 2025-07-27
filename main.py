@@ -22,7 +22,7 @@ from file_handler.google_cloud_storage import Handler
 from google.cloud import storage
 import requests
 import json
-from agent import invoke_agent
+from agent import invoke_agent, get_profile
 
 
 
@@ -416,6 +416,17 @@ def chat():
     except Exception as e:
         print(f"An error occurred in the agent: {e}")
         return jsonify({"error": "An internal error occurred in the agent."}), 500
+
+@app.route("/get_profile", methods=["GET"])
+def profile_data():
+    """API endpoint to fetch the current user profile."""
+    user_id = request.args.get("user_id")
+    if not user_id:
+        return jsonify({"error": "Missing user_id"}), 400
+    
+    # Get the profile from our agent's memory store
+    profile = get_profile(user_id)
+    return jsonify(profile.model_dump())
 
 if __name__ == '__main__':
     app.run(debug=True)
