@@ -8,11 +8,11 @@ from pydantic import BaseModel, Field, validator
 # langchain langraph imports
 from langchain_core.messages import HumanMessage, AIMessage, SystemMessage, ToolMessage
 from langchain_core.tools import tool
-from langchain.graph import StateGraph, MessageState, END, START
-from langraph.checkpoint.memory import MemorySaver
+from langgraph.graph import StateGraph, MessagesState, END, START
+from langgraph.checkpoint.memory import MemorySaver
 
 # Google Gemini imports (LLM Model)
-from langchain_google_gemini import ChatGoogleGenerativeAI
+from langchain_google_genai import ChatGoogleGenerativeAI
 import google.generativeai as genai
 from google.generativeai.types import GenerationConfig
 from dotenv import load_dotenv
@@ -84,7 +84,7 @@ class InterviewProfile(BaseModel):
     project_experience: List[str] = Field(default_factory=list, description="Summaries of projects the user has worked on.")
     personality_traits: List[str] = Field(default_factory=list, description="Observed personality traits (e.g., 'detail-oriented', 'collaborative').")
 
-memory_store: dict[Unknown, Unknown] = {}
+memory_store = {}
 def get_profile(user_id: str) -> InterviewProfile:
     return InterviewProfile(**memory_store.get(user_id, {}))
 def save_profile(user_id: str, profile: InterviewProfile):
@@ -153,7 +153,7 @@ You have access to the user's current profile. Use this information to ask more 
 </interview_profile>
 """
 
-model = ChatGoogleGenerativeAI(model="gemini-2.5-flash-preview-04-17", google_api_key=GOOGLE_API_KEY)
+model = ChatGoogleGenerativeAI(model="gemini-1.5-flash-latest", google_api_key=GOOGLE_API_KEY)
 tools = [resume_extraction_tool, update_interview_profile]
 model_with_tools = model.bind_tools(tools)
 
