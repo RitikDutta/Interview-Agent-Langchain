@@ -5,102 +5,247 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Interview Assistant</title>
+    <title>AI Interview Coach</title>
     <style>
-        body { font-family: sans-serif; background-color: #f4f4f9; margin: 0; padding: 20px; }
-        #chat-container { max-width: 800px; margin: auto; background: #fff; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); display: flex; flex-direction: column; height: 90vh; }
-        #chat-box { flex-grow: 1; padding: 20px; overflow-y: auto; border-bottom: 1px solid #ddd; }
-        .message { margin-bottom: 15px; }
-        .user-message { text-align: right; }
-        .user-message .content { background-color: #007bff; color: white; padding: 10px 15px; border-radius: 15px 15px 0 15px; display: inline-block; }
-        .agent-message .content { background-color: #e9e9eb; color: #333; padding: 10px 15px; border-radius: 15px 15px 15px 0; display: inline-block; }
-        #input-container { display: flex; padding: 10px; }
-        #user-input { flex-grow: 1; border: 1px solid #ccc; border-radius: 20px; padding: 10px 15px; font-size: 16px; }
-        #send-button { background-color: #007bff; color: white; border: none; border-radius: 50%; width: 45px; height: 45px; margin-left: 10px; cursor: pointer; font-size: 20px; }
-        #send-button:hover { background-color: #0056b3; }
+        :root {
+            --primary-color: #007bff;
+            --light-gray: #f4f4f9;
+            --medium-gray: #e9e9eb;
+            --dark-gray: #333;
+            --card-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--light-gray);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+        .main-container {
+            display: flex;
+            gap: 20px;
+            width: 95%;
+            max-width: 1400px;
+            height: 95vh;
+        }
+        #interview-panel {
+            flex: 2;
+            display: flex;
+            flex-direction: column;
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: var(--card-shadow);
+        }
+        #profile-dashboard {
+            flex: 1;
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: var(--card-shadow);
+            padding: 25px;
+            overflow-y: auto;
+        }
+        #qa-container {
+            flex-grow: 1;
+            padding: 30px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        .agent-question, .user-answer {
+            opacity: 0;
+            transform: translateY(20px);
+            animation: fadeIn 0.5s forwards;
+        }
+        .agent-question h2 {
+            font-size: 1.8rem;
+            color: var(--dark-gray);
+            line-height: 1.4;
+            margin-bottom: 25px;
+        }
+        .user-answer p {
+            font-size: 1.1rem;
+            color: #555;
+            background-color: var(--light-gray);
+            padding: 15px;
+            border-radius: 8px;
+            white-space: pre-wrap;
+        }
+        #input-container {
+            padding: 20px;
+            border-top: 1px solid #ddd;
+        }
+        #user-input {
+            width: 100%;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            padding: 15px;
+            font-size: 1rem;
+            box-sizing: border-box;
+        }
+        #user-input:focus { outline-color: var(--primary-color); }
+        .typing-indicator {
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            color: #888;
+        }
+        .typing-indicator span { font-style: italic; }
+
+        /* Dashboard Styles */
+        #profile-dashboard h3 {
+            margin-top: 0;
+            color: var(--primary-color);
+            border-bottom: 2px solid var(--primary-color);
+            padding-bottom: 10px;
+        }
+        .profile-section { margin-bottom: 25px; }
+        .profile-section h4 { margin-bottom: 10px; color: #555; }
+        .tag-container { display: flex; flex-wrap: wrap; gap: 8px; }
+        .tag {
+            background-color: var(--medium-gray);
+            color: var(--dark-gray);
+            padding: 5px 12px;
+            border-radius: 15px;
+            font-size: 0.9rem;
+        }
+        .strength { background-color: #d4edda; color: #155724; }
+        .weakness { background-color: #f8d7da; color: #721c24; }
+        .project-item {
+            background: var(--light-gray);
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 0.95rem;
+        }
+
+        @keyframes fadeIn {
+            to { opacity: 1; transform: translateY(0); }
+        }
     </style>
 </head>
 <body>
 
-<div id="chat-container">
-    <div id="chat-box">
+<div class="main-container">
+    <div id="interview-panel">
+        <div id="qa-container">
+            <!-- QA -->
+        </div>
+        <div class="typing-indicator">
+            <span>Agent is thinking...</span>
+        </div>
+        <div id="input-container">
+            <textarea id="user-input" rows="3" placeholder="Type your answer here..." disabled></textarea>
+        </div>
     </div>
-    <div id="input-container">
-        <input type="text" id="user-input" placeholder="Type your message...">
-        <button id="send-button">►</button>
+    <div id="profile-dashboard">
+        <h3>Interview Insights</h3>
+        <div id="profile-content">
+            <p style="color: #888;">Your profile will update here as the interview progresses.</p>
+        </div>
     </div>
 </div>
 
 <script>
-    // --- Session Management ---
-    // for test generate random user and thread IDs
-    // In a real application, these would be managed by the backend.
     const userId = `user-${Math.random().toString(36).substr(2, 9)}`;
     const threadId = `thread-${Math.random().toString(36).substr(2, 9)}`;
 
-    const chatBox = document.getElementById('chat-box');
+    const qaContainer = document.getElementById('qa-container');
     const userInput = document.getElementById('user-input');
-    const sendButton = document.getElementById('send-button');
+    const typingIndicator = document.querySelector('.typing-indicator');
+    const profileContent = document.getElementById('profile-content');
 
-    // --- Helper function to display messages ---
-    function displayMessage(sender, text) {
-        const messageDiv = document.createElement('div');
-        messageDiv.classList.add('message', `${sender}-message`);
-        const contentDiv = document.createElement('div');
-        contentDiv.classList.add('content');
-        contentDiv.textContent = text;
-        messageDiv.appendChild(contentDiv);
-        chatBox.appendChild(messageDiv);
-        chatBox.scrollTop = chatBox.scrollHeight; // Auto-scroll
+    // --- Core Functions ---
+    function displayQA(question, answer = null) {
+        qaContainer.innerHTML = ''; // clear previous Q&A
+        
+        const questionDiv = document.createElement('div');
+        questionDiv.className = 'agent-question';
+        questionDiv.innerHTML = `<h2>${question}</h2>`;
+        qaContainer.appendChild(questionDiv);
+
+        if (answer) {
+            const answerDiv = document.createElement('div');
+            answerDiv.className = 'user-answer';
+            answerDiv.innerHTML = `<p>${answer}</p>`;
+            qaContainer.appendChild(answerDiv);
+        }
     }
 
-    // --- Function to send a message to the backend ---
     async function sendMessage(messageText) {
-        if (!messageText.trim()) return;
-
-        displayMessage('user', messageText);
-        userInput.value = ''; // Clear input
+        userInput.disabled = true;
+        typingIndicator.style.display = 'flex';
+        
+        const isKickoff = messageText === '<BEGIN_INTERVIEW>';
 
         try {
             const response = await fetch('/chat', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    user_id: userId,
-                    thread_id: threadId,
-                    message: messageText
-                }),
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ user_id: userId, thread_id: threadId, message: messageText }),
             });
-
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-
             const data = await response.json();
-            displayMessage('agent', data.response);
+            
+            displayQA(data.response);
+            await updateProfileDashboard();
 
         } catch (error) {
-            console.error('Error sending message:', error);
-            displayMessage('agent', 'Sorry, I encountered an error. Please check the console.');
+            console.error('Error:', error);
+            displayQA('Sorry, an error occurred. Please check the console.');
+        } finally {
+            typingIndicator.style.display = 'none';
+            userInput.disabled = false;
+            userInput.value = '';
+            userInput.focus();
+        }
+    }
+
+    async function updateProfileDashboard() {
+        try {
+            const response = await fetch(`/get_profile?user_id=${userId}`);
+            const profile = await response.json();
+            
+            let html = '';
+            if (profile.user_name) html += `<div class="profile-section"><h4>Name</h4><div class="tag">${profile.user_name}</div></div>`;
+            if (profile.domain) html += `<div class="profile-section"><h4>Domain</h4><div class="tag">${profile.domain}</div></div>`;
+            if (profile.technical_skills?.length) {
+                html += `<div class="profile-section"><h4>Technical Skills</h4><div class="tag-container">${profile.technical_skills.map(s => `<div class="tag">${s}</div>`).join('')}</div></div>`;
+            }
+            if (profile.strengths?.length) {
+                html += `<div class="profile-section"><h4>Strengths</h4><div class="tag-container">${profile.strengths.map(s => `<div class="tag strength">${s}</div>`).join('')}</div></div>`;
+            }
+            if (profile.weaknesses?.length) {
+                html += `<div class="profile-section"><h4>Areas for Improvement</h4><div class="tag-container">${profile.weaknesses.map(w => `<div class="tag weakness">${w}</div>`).join('')}</div></div>`;
+            }
+            if (profile.project_experience?.length) {
+                html += `<div class="profile-section"><h4>Project Experience</h4><div class="project-list">${profile.project_experience.map(p => `<div class="project-item">${p}</div>`).join('')}</div></div>`;
+            }
+            
+            profileContent.innerHTML = html || '<p style="color: #888;">No profile data yet. Start answering questions!</p>';
+
+        } catch (error) {
+            console.error('Error fetching profile:', error);
         }
     }
 
     // --- Event Listeners ---
-    sendButton.addEventListener('click', () => sendMessage(userInput.value));
     userInput.addEventListener('keypress', (event) => {
-        if (event.key === 'Enter') {
-            sendMessage(userInput.value);
+        if (event.key === 'Enter' && !event.shiftKey) {
+            event.preventDefault();
+            const lastQuestion = qaContainer.querySelector('.agent-question h2').textContent;
+            const userAnswer = userInput.value;
+            displayQA(lastQuestion, userAnswer);
+            sendMessage(userAnswer);
         }
     });
 
-    // --- Initial Greeting ---s
-    // Kickstart the conversation when the page loads to get the agent's greeting.
+    // --- Initial Greeting ---
     window.addEventListener('load', () => {
         sendMessage('<BEGIN_INTERVIEW>');
     });
-
 </script>
+
 </body>
 </html>
