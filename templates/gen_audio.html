@@ -1,0 +1,100 @@
+<!-- templates/gen_audio.html -->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gemini TTS Direct Playback</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: #f4f7f6; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .container { background: white; padding: 2rem 3rem; border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.1); text-align: center; width: 90%; max-width: 500px; }
+        h1 { color: #333; }
+        textarea { width: 100%; min-height: 120px; margin-bottom: 1.5rem; padding: 0.8rem; border-radius: 8px; border: 1px solid #ccc; font-size: 1rem; resize: vertical; box-sizing: border-box;}
+        button { background-color: #007bff; color: white; padding: 12px 24px; border: none; border-radius: 8px; cursor: pointer; font-size: 1.1rem; font-weight: 500; transition: background-color 0.2s; }
+        button:hover:not(:disabled) { background-color: #0056b3; }
+        button:disabled { background-color: #cccccc; cursor: not-allowed; }
+        #status { margin-top: 1.5rem; font-style: italic; color: #555; min-height: 1.2em; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Gemini TTS Stream</h1>
+    <p>Enter text below to generate speech without saving any files.</p>
+    
+    <textarea id="text-input" placeholder="e.g., Hello, world! This audio is played directly from memory.">hey how are you today</textarea>
+    
+    <button id="play-button">Generate and Play</button>
+    
+    <div id="status"></div>
+    
+    <!-- This audio player is hidden but used by JavaScript to play the sound -->
+    <audio id="audio-player" style="display:none;"></audio>
+</div>
+
+<script>
+    const playButton = document.getElementById('play-button');
+    const textInput = document.getElementById('text-input');
+    const statusDiv = document.getElementById('status');
+    const audioPlayer = document.getElementById('audio-player');
+
+    playButton.addEventListener('click', async () => {
+        const text = textInput.value.trim();
+        if (!text) {
+            statusDiv.textContent = 'Please enter some text first.';
+            return;
+        }
+
+        // Disable the button and show a loading message to the user
+        playButton.disabled = true;
+        statusDiv.textContent = 'Generating audio, please wait...';
+
+        try {
+            // Send the text to our Flask backend using the Fetch API
+            const response = await fetch('/gen_audio', {
+                method: 'POST',
+                headers: {
+                    // This header tells Flask we're sending form data
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                // Format the text as form data
+                body: `text=${encodeURIComponent(text)}`
+            });
+
+            // Check if the server responded with an error (like 4xx or 5xx)
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`Server error: ${response.status} - ${errorText}`);
+            }
+
+            // Get the raw audio data as a "Blob" (a file-like object in memory)
+            const audioBlob = await response.blob();
+
+            // Create a temporary, local URL for the Blob in the browser's memory
+            const audioUrl = URL.createObjectURL(audioBlob);
+
+            // Tell the audio player to use this temporary URL as its source
+            audioPlayer.src = audioUrl;
+            audioPlayer.play();
+
+            statusDiv.textContent = 'Playing...';
+
+            // Clean up the temporary URL after the audio has finished playing to free memory
+            audioPlayer.onended = () => {
+                URL.revokeObjectURL(audioUrl);
+                statusDiv.textContent = 'Playback finished.';
+            };
+
+        } catch (error) {
+            console.error('Error:', error);
+            statusDiv.textContent = `An error occurred: ${error.message}`;
+        } finally {
+            // Re-enable the button so the user can try again
+            playButton.disabled = false;
+        }
+    });
+</script>
+
+</body>
+</html>
