@@ -1,9 +1,11 @@
+# agent.py
+
 import os
 import uuid
 import mimetypes
 from typing import Optional, Dict, Any, List, Literal
-
-from pydantic import BaseModel, Field, validator
+import json
+from pydantic import BaseModel, Field
 
 # langchain langraph imports
 from langchain_core.messages import HumanMessage, AIMessage, SystemMessage, ToolMessage
@@ -33,7 +35,7 @@ if not GOOGLE_API_KEY:
 genai.configure(api_key=GOOGLE_API_KEY)
 
 
-#resume parser logic, (this is a simplified version looking for a change of logic)
+# resume parser logic
 def _read_file_bytes(file_path: str) -> bytes:
     if not os.path.exists(file_path):
         raise FileNotFoundError(f"Required example file not found: {file_path}. Ensure it's in the same directory.")
@@ -59,9 +61,9 @@ FEW_SHOT_EXAMPLES: List[Dict[str, Any]] = [
 ]
 
 def extract_resume_info(file_path: str) -> str:
-    print(f"\n[Parser Log] Reading resume from: {file_path}")
     system_instruction = "You are an expert resume parser. Extract all content from the provided resume (PDF or image) and format it clearly using Markdown."
-    model = genai.GenerativeModel("gemini-1.5-flash-latest", system_instruction=system_instruction)
+    # using a fast model for parsing
+    model = genai.GenerativeModel("gemini-2.5-flash", system_instruction=system_instruction)
     mime_type = get_mime_type(file_path)
     file_data = _read_file_bytes(file_path)
     user_prompt = {"role": "user", "parts": [{"mime_type": mime_type, "data": file_data}]}
@@ -71,28 +73,26 @@ def extract_resume_info(file_path: str) -> str:
         generation_config=GenerationConfig(response_mime_type="text/plain"),
         request_options={"timeout": 600}
     )
-    print("[Parser Log] Successfully extracted text from resume.")
     return response.text
 
-#memory management and user profile management
+# memory management and user profile management
 class InterviewProfile(BaseModel):
     user_name: Optional[str] = Field(default=None, description="The user's full name.")
-    domain: Optional[str] = Field(default=None, description="The job domain the user is preparing for (e.g., 'Data Science', 'Software Engineering').")
-    strengths: List[str] = Field(default_factory=list, description="The user's identified strengths.")
-    weaknesses: List[str] = Field(default_factory=list, description="Areas for improvement.")
-    technical_skills: List[str] = Field(default_factory=list, description="Specific technical skills (e.g., 'Python', 'React', 'SQL').")
-    project_experience: List[str] = Field(default_factory=list, description="Summaries of projects the user has worked on.")
-    personality_traits: List[str] = Field(default_factory=list, description="Observed personality traits (e.g., 'detail-oriented', 'collaborative').")
+    domain: Optional[str] = Field(default=None, description="The job domain.")
+    strengths: List[str] = Field(default_factory=list)
+    weaknesses: List[str] = Field(default_factory=list)
+    technical_skills: List[str] = Field(default_factory=list)
+    project_experience: List[str] = Field(default_factory=list)
+    personality_traits: List[str] = Field(default_factory=list)
 
-memory_store = {}
+memory_store: Dict[str, Any] = {}
 def get_profile(user_id: str) -> InterviewProfile:
     return InterviewProfile(**memory_store.get(user_id, {}))
 def save_profile(user_id: str, profile: InterviewProfile):
     memory_store[user_id] = profile.model_dump()
-    print(f"[Memory Log] Profile for user '{user_id}' saved.")
 
 
-#tools
+# tools
 @tool
 def resume_extraction_tool(file_path: str) -> str:
     """Reads a resume file (PDF or image) and extracts its text. Use this when a user provides a file path."""
@@ -111,7 +111,7 @@ def update_interview_profile(
     """Updates the user's interview profile. Use this to save details from a conversation or after analyzing resume text."""
     return "Profile update request received. The system will process it."
 
-# system prompt for the agent and conversation flow
+# system prompt for the agent
 AGENT_SYSTEM_PROMPT = """**Your Persona:** You are a friendly, professional, and highly skilled AI Interview Coach.
 
 **Your Primary Goal:** Your main job is to engage the user in a realistic, conversational mock interview. **You must use the information you gather to ask progressively deeper, more relevant, and more challenging questions.**
@@ -153,7 +153,8 @@ You have access to the user's current profile. Use this information to ask more 
 </interview_profile>
 """
 
-model = ChatGoogleGenerativeAI(model="gemini-1.5-flash-latest", google_api_key=GOOGLE_API_KEY)
+# using a powerful model for the main agent's reasoning
+model = ChatGoogleGenerativeAI(model="gemini-2.5-flash", google_api_key=GOOGLE_API_KEY)
 tools = [resume_extraction_tool, update_interview_profile]
 model_with_tools = model.bind_tools(tools)
 
@@ -172,10 +173,8 @@ def tool_node(state: MessagesState, config: dict):
     tool_messages = []
     for tool_call in tool_calls:
         tool_name = tool_call["name"]
-        print(f"\n[Graph Log] Executing tool: {tool_name}")
         if tool_name == resume_extraction_tool.name:
             raw_resume_text = resume_extraction_tool.invoke(tool_call["args"])
-            print("[Graph Log] Parsing extracted resume text to update profile...")
             parser_prompt = f"You are a data extraction specialist. Analyze the following resume text and call the `update_interview_profile` tool with all the relevant information you can find.\n\nResume Text:\n---\n{raw_resume_text}\n---"
             parser_model = model.bind_tools([update_interview_profile])
             parser_response = parser_model.invoke(parser_prompt)
@@ -208,7 +207,11 @@ def tool_node(state: MessagesState, config: dict):
     return {"messages": tool_messages}
 
 def should_continue(state: MessagesState) -> Literal["tools", "__end__"]:
-    return "tools" if state["messages"][-1].tool_calls else END
+    last_message = state["messages"][-1]
+    if last_message.tool_calls:
+        return "tools"
+    else:
+        return END
 
 builder = StateGraph(MessagesState)
 builder.add_node("agent", agent_node)
@@ -219,20 +222,32 @@ builder.add_edge("tools", "agent")
 memory = MemorySaver()
 graph = builder.compile(checkpointer=memory)
 
-# main execution loop
-def invoke_agent(user_id: str, thread_id: str, user_message: str) -> str:
-    """ the main entry point for Flask app to interact with the agent"""
+# main streaming function for the flask app
+def stream_agent_events(user_id: str, thread_id: str, user_message: str):
     config = {"configurable": {"thread_id": thread_id, "user_id": user_id}}
-
     messages = [HumanMessage(content=user_message)]
     
-    # invoking the graph with the user message
-    response_event = graph.invoke(
-        {"messages": messages},
-        config=config)
+    try:
+        events = graph.stream({"messages": messages}, config, stream_mode="values")
+        
+        for event in events:
+            last_message = event["messages"][-1]
 
-    #return content of the message
-    if response_event and response_event.get("messages"):
-        return response_event["messages"][-1].content
-    else:
-        return "No response from the agent. Please try again later."
+            if isinstance(last_message, AIMessage) and last_message.tool_calls:
+                tool_name = last_message.tool_calls[0]['name']
+                payload = {"type": "status", "content": f"Calling tool: `{tool_name}`..."}
+                yield json.dumps(payload)
+
+            elif isinstance(last_message, ToolMessage):
+                status_content = "Tool execution finished. Analyzing results..."
+                payload = {"type": "status", "content": status_content}
+                yield json.dumps(payload)
+
+            elif isinstance(last_message, AIMessage):
+                payload = {"type": "final_response", "content": last_message.content}
+                yield json.dumps(payload)
+
+    except Exception as e:
+        print(f"An error occurred during agent streaming: {e}")
+        error_payload = {"type": "error", "content": "An error occurred in the agent. Check server logs."}
+        yield json.dumps(error_payload)
