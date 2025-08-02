@@ -1,4 +1,4 @@
-from flask import Flask, request, render_template, render_template_string
+from flask import Flask, request, render_template, render_template_string, Response
 from my_assistant_gemini import DataScienceInterviewAssistant  # Import your class
 from flask import Flask, render_template, request, redirect, url_for, flash, session, jsonify
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
@@ -22,7 +22,7 @@ from file_handler.google_cloud_storage import Handler
 from google.cloud import storage
 import requests
 import json
-from agent import invoke_agent, get_profile
+from agent import stream_agent_events, get_profile
 
 
 
@@ -396,10 +396,8 @@ def langraph():
 
 @app.route("/chat", methods=["POST"])
 def chat():
-    """API endpoint to handle chat messages."""
+    """API endpoint to handle streaming chat messages using Server-Sent Events."""
     data = request.json
-    
-    # Validate incoming data
     user_id = data.get("user_id")
     thread_id = data.get("thread_id")
     user_message = data.get("message")
@@ -407,15 +405,21 @@ def chat():
     if not all([user_id, thread_id, user_message]):
         return jsonify({"error": "Missing user_id, thread_id, or message"}), 400
 
-    print(f"Received message from user '{user_id}': {user_message}")
+    print(f"Streaming response for user '{user_id}': {user_message}")
 
-    # Call the agent logic
-    try:
-        agent_response = invoke_agent(user_id, thread_id, user_message)
-        return jsonify({"response": agent_response})
-    except Exception as e:
-        print(f"An error occurred in the agent: {e}")
-        return jsonify({"error": "An internal error occurred in the agent."}), 500
+    # This generator function will stream data to the client
+    def generate():
+        try:
+            for event_data in stream_agent_events(user_id, thread_id, user_message):
+                # Format as a Server-Sent Event
+                yield f"data: {event_data}\n\n"
+        except Exception as e:
+            print(f"An error occurred during streaming: {e}")
+            error_event = '{"type": "error", "content": "An internal error occurred."}'
+            yield f"data: {error_event}\n\n"
+
+    # Return a streaming response
+    return Response(generate(), mimetype='text/event-stream')
 
 @app.route("/get_profile", methods=["GET"])
 def profile_data():
@@ -424,7 +428,6 @@ def profile_data():
     if not user_id:
         return jsonify({"error": "Missing user_id"}), 400
     
-    # Get the profile from our agent's memory store
     profile = get_profile(user_id)
     return jsonify(profile.model_dump())
 
