@@ -1,149 +1,209 @@
-<!-- templates/index.html -->
+<!-- agent_lang.html -->
 
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Interview Coach</title>
+    <title>AI Interview Coach - In Session</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
-            --primary-color: #007bff;
-            --light-gray: #f4f4f9;
-            --medium-gray: #e9e9eb;
-            --dark-gray: #333;
-            --card-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            --primary-color: #4A90E2;
+            --secondary-color: #2D3748;
+            --background-color: #F7FAFC;
+            --card-background: #FFFFFF;
+            --text-color: #4A5568;
+            --green-light: #38A169;
+            --red-button: #E53E3E;
+            --card-shadow: 0 7px 25px rgba(0,0,0,0.08);
+            --border-radius: 12px;
         }
+        * { box-sizing: border-box; }
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            background-color: var(--light-gray);
+            font-family: 'Inter', sans-serif;
+            background-color: var(--background-color);
             margin: 0;
-            padding: 20px;
             display: flex;
             justify-content: center;
             align-items: center;
             height: 100vh;
+            color: var(--text-color);
         }
         .main-container {
             display: flex;
-            gap: 20px;
+            gap: 24px;
             width: 95%;
-            max-width: 1400px;
+            max-width: 1600px;
             height: 95vh;
         }
-        #interview-panel {
-            flex: 2;
+        
+        #interview-window {
+            flex: 3;
             display: flex;
             flex-direction: column;
-            background: #fff;
-            border-radius: 12px;
+            background: var(--secondary-color);
+            border-radius: var(--border-radius);
             box-shadow: var(--card-shadow);
+            overflow: hidden;
+            position: relative;
         }
-        #profile-dashboard {
-            flex: 1;
-            background: #fff;
-            border-radius: 12px;
-            box-shadow: var(--card-shadow);
-            padding: 25px;
-            overflow-y: auto;
-        }
-        #qa-container {
+        #video-container {
             flex-grow: 1;
-            padding: 30px;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
+            position: relative;
+            background: #222;
         }
-        .agent-question, .user-answer {
-            opacity: 0;
-            transform: translateY(20px);
-            animation: fadeIn 0.5s forwards;
-        }
-        .agent-question h2 {
-            font-size: 1.8rem;
-            color: var(--dark-gray);
-            line-height: 1.4;
-            margin-bottom: 25px;
-        }
-        .user-answer p {
-            font-size: 1.1rem;
-            color: #555;
-            background-color: var(--light-gray);
-            padding: 15px;
+        .video-frame {
+            position: absolute;
+            background-color: #1a1a1a;
             border-radius: 8px;
-            white-space: pre-wrap;
+            overflow: hidden;
         }
-        #input-container {
-            padding: 20px;
-            border-top: 1px solid #ddd;
+        #user-frame {
+            top: 0; bottom: 0; left: 0; right: 0; z-index: 1;
+        }
+        #user-webcam {
+            width: 100%; height: 100%;
+            object-fit: cover;
+            transform: scaleX(-1);
+        }
+        #interviewer-mini-frame {
+            top: 20px; right: 20px;
+            width: 240px; height: 180px;
+            background-color: var(--secondary-color);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            display: flex; justify-content: center; align-items: center;
+            z-index: 2;
+        }
+        .interviewer-initial {
+            font-size: 5rem; font-weight: 700;
+            color: rgba(255, 255, 255, 0.6); user-select: none;
+        }
+        .interviewer-info {
+            position: absolute; bottom: 10px; left: 10px;
+            background: rgba(0,0,0,0.6); backdrop-filter: blur(10px);
+            padding: 8px 12px; border-radius: 6px;
+            display: inline-flex; align-items: center; gap: 8px;
+            font-size: 0.9em;
+        }
+        .online-dot { width: 8px; height: 8px; background-color: var(--green-light); border-radius: 50%; }
+        .interviewer-info span { color: white; font-weight: 500; }
+
+        #question-overlay {
+            position: absolute; bottom: 25px; left: 25px;
+            right: 285px; /* Spacing from the small video frame */
+            background: rgba(0,0,0,0.7); backdrop-filter: blur(15px);
+            color: white; padding: 25px; border-radius: 10px;
+            border: 1px solid rgba(255,255,255,0.2);
+            font-size: 1.5rem; line-height: 1.5; display: none;
+            align-items: center; gap: 20px; z-index: 3;
+        }
+        .tts-button {
+            background: none; border: none; font-size: 2rem;
+            cursor: pointer; color: rgba(255,255,255,0.7);
+            transition: color 0.2s;
+        }
+        .tts-button:hover { color: white; }
+        .tts-button.speaking { color: var(--green-light); }
+
+        /* Controls Bar */
+        #controls-bar {
+            background: var(--card-background); padding: 15px;
+            display: flex; justify-content: center; align-items: center;
+            gap: 10px; border-top: 1px solid #E2E8F0;
         }
         #user-input {
-            width: 100%;
-            border: 1px solid #ccc;
-            border-radius: 8px;
-            padding: 15px;
-            font-size: 1rem;
-            box-sizing: border-box;
+            flex-grow: 1; border-radius: 20px;
+            border: 1px solid #CBD5E0;
+            padding: 10px 15px; font-size: 1rem;
+            resize: none; /* Disable manual resizing */
         }
-        #user-input:focus { outline-color: var(--primary-color); }
-        .typing-indicator {
-            display: none;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
-            color: #888;
+        .control-button {
+            width: 44px; height: 44px; border-radius: 50%;
+            border: 1px solid #CBD5E0; background-color: #fff;
+            color: var(--text-color); cursor: pointer; font-size: 1.5rem;
+            display: flex; align-items: center; justify-content: center;
+            transition: all 0.2s;
         }
-        .typing-indicator span { font-style: italic; }
-
-        /* Dashboard Styles */
-        #profile-dashboard h3 {
-            margin-top: 0;
-            color: var(--primary-color);
-            border-bottom: 2px solid var(--primary-color);
-            padding-bottom: 10px;
+        
+        .control-button.recording {
+            background-color: var(--red-button);
+            color: white;
+            border-color: var(--red-button);
+            animation: pulse 1.5s infinite;
         }
-        .profile-section { margin-bottom: 25px; }
-        .profile-section h4 { margin-bottom: 10px; color: #555; }
-        .tag-container { display: flex; flex-wrap: wrap; gap: 8px; }
-        .tag {
-            background-color: var(--medium-gray);
-            color: var(--dark-gray);
-            padding: 5px 12px;
-            border-radius: 15px;
-            font-size: 0.9rem;
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(229, 62, 62, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(229, 62, 62, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(229, 62, 62, 0); }
         }
-        .strength { background-color: #d4edda; color: #155724; }
-        .weakness { background-color: #f8d7da; color: #721c24; }
-        .project-item {
-            background: var(--light-gray);
-            padding: 10px;
-            border-radius: 5px;
-            font-size: 0.95rem;
+        
+        /* Sidebar */
+        #sidebar {
+            flex: 1.2; display: flex; flex-direction: column;
+            background: var(--card-background); border-radius: var(--border-radius);
+            box-shadow: var(--card-shadow); overflow: hidden; padding: 25px;
         }
-
-        @keyframes fadeIn {
-            to { opacity: 1; transform: translateY(0); }
+        #sidebar-content { overflow-y: auto; flex-grow: 1; }
+        #process-log-container { padding-bottom: 20px; }
+        #profile-section-container { border-top: 1px solid #E2E8F0; padding-top: 20px; }
+        #sidebar h3 {
+            margin-top: 0; color: var(--primary-color); padding-bottom: 10px;
+            font-size: 1.2rem; border-bottom: 2px solid var(--primary-color); margin-bottom: 15px;
         }
+        #profile-details h4 {
+            color: #A0AEC0; font-size: 0.8rem;
+            text-transform: uppercase; margin-bottom: 10px;
+        }
+        .tag-container { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; }
+        .tag { background-color: #E2E8F0; padding: 5px 12px; border-radius: 15px; font-size: 0.9rem; }
+        
+        #process-log { font-family: 'Courier New', monospace; font-size: 0.85rem; line-height: 1.6; }
+        .log-item { padding-bottom: 8px; }
+        .log-arrow { color: var(--primary-color); font-weight: bold; margin-right: 8px; }
+        .log-text { color: var(--text-color); }
     </style>
 </head>
 <body>
 
 <div class="main-container">
-    <div id="interview-panel">
-        <div id="qa-container">
-            <!-- QA -->
+    <div id="interview-window">
+        <div id="video-container">
+            <div id="user-frame" class="video-frame">
+                <video id="user-webcam" autoplay muted></video>
+            </div>
+            <div id="interviewer-mini-frame" class="video-frame">
+                <div class="interviewer-initial">AI</div>
+                <div class="interviewer-info">
+                    <div class="online-dot"></div>
+                    <span>AI Interview Coach</span>
+                </div>
+            </div>
+            <div id="question-overlay" class="question-overlay">
+                <button id="tts-button" class="tts-button" title="Read question aloud">🔊</button>
+                <p id="agent-question-text"></p>
+            </div>
         </div>
-        <div class="typing-indicator">
-            <span>Agent is thinking...</span>
-        </div>
-        <div id="input-container">
-            <textarea id="user-input" rows="3" placeholder="Type your answer here..." disabled></textarea>
+        <div id="controls-bar">
+            <textarea id="user-input" rows="1" placeholder="Type your response here or use the mic..." disabled></textarea>
+            <button id="mic-button" class="control-button" title="Start Listening">🎤</button>
+            <button id="camera-button" class="control-button" title="Toggle Camera">📷</button>
+            <button id="end-call-button" class="control-button" style="background-color: var(--red-button); color: white;" title="End Session">📞</button>
         </div>
     </div>
-    <div id="profile-dashboard">
-        <h3>Interview Insights</h3>
-        <div id="profile-content">
-            <p style="color: #888;">Your profile will update here as the interview progresses.</p>
+    
+    <div id="sidebar">
+        <div id="sidebar-content">
+            <div id="process-log-container">
+                <h3>Agent Process Log</h3>
+                <div id="process-log"></div>
+            </div>
+            <div id="profile-section-container">
+                <h3>Live Profile</h3>
+                <div id="profile-details">
+                    <p>Your profile insights will appear here...</p>
+                </div>
+            </div>
         </div>
     </div>
 </div>
@@ -152,33 +212,66 @@
     const userId = `user-${Math.random().toString(36).substr(2, 9)}`;
     const threadId = `thread-${Math.random().toString(36).substr(2, 9)}`;
 
-    const qaContainer = document.getElementById('qa-container');
+    // DOM Elements
     const userInput = document.getElementById('user-input');
-    const typingIndicator = document.querySelector('.typing-indicator');
-    const profileContent = document.getElementById('profile-content');
+    const profileDetails = document.getElementById('profile-details');
+    const processLog = document.getElementById('process-log');
+    const questionOverlay = document.getElementById('question-overlay');
+    const agentQuestionText = document.getElementById('agent-question-text');
+    const ttsButton = document.getElementById('tts-button');
+    const cameraButton = document.getElementById('camera-button');
+    const userWebcam = document.getElementById('user-webcam');
+    
+    const synth = window.speechSynthesis;
+    let targetVoice = null;
+    function loadVoices() { if ('speechSynthesis' in window) { const voices = synth.getVoices(); targetVoice = voices.find(v => v.name === 'Google US English') || voices[0]; } }
+    if ('speechSynthesis' in window) { synth.onvoiceschanged = loadVoices; loadVoices(); }
+    function speakText(text) { if (!text || !('speechSynthesis'in window)) return; if (synth.speaking) { synth.cancel(); return; } const u = new SpeechSynthesisUtterance(text); u.voice = targetVoice; u.rate = 0.9; u.pitch = 1.0; u.onstart = () => { ttsButton.textContent = '⏹️'; ttsButton.classList.add('speaking'); }; u.onend = () => { ttsButton.textContent = '🔊'; ttsButton.classList.remove('speaking'); }; synth.speak(u); }
 
-    // --- Core Functions ---
-    function displayQA(question, answer = null) {
-        qaContainer.innerHTML = ''; // clear previous Q&A
-        
-        const questionDiv = document.createElement('div');
-        questionDiv.className = 'agent-question';
-        questionDiv.innerHTML = `<h2>${question}</h2>`;
-        qaContainer.appendChild(questionDiv);
-
-        if (answer) {
-            const answerDiv = document.createElement('div');
-            answerDiv.className = 'user-answer';
-            answerDiv.innerHTML = `<p>${answer}</p>`;
-            qaContainer.appendChild(answerDiv);
+    let webcamStream;
+    async function setupWebcam() {
+        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+            try {
+                webcamStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+                userWebcam.srcObject = webcamStream;
+            } catch (err) { console.error("Error accessing webcam:", err); userWebcam.style.backgroundColor = '#333'; }
         }
+    }
+    cameraButton.addEventListener('click', () => {
+        if (webcamStream) {
+            const track = webcamStream.getTracks()[0];
+            track.enabled = !track.enabled;
+            cameraButton.textContent = track.enabled ? '📷' : '🚫';
+        }
+    });
+
+    function displayQA(question) {
+        if (synth) synth.cancel();
+        agentQuestionText.textContent = question;
+        questionOverlay.style.display = 'flex';
+    }
+
+    async function updateProfileDashboard() {
+        try {
+            const response = await fetch(`/get_profile?user_id=${userId}`);
+            const profile = await response.json();
+            let html = '';
+            if (profile.user_name) html += `<div><h4>Name</h4><div class="tag-container"><div class="tag">${profile.user_name}</div></div></div>`;
+            if (profile.domain) html += `<div><h4>Domain</h4><div class="tag-container"><div class="tag">${profile.domain}</div></div></div>`;
+            if (profile.technical_skills?.length) {
+                html += `<div><h4>Technical Skills</h4><div class="tag-container">${profile.technical_skills.map(s => `<div class="tag">${s}</div>`).join('')}</div></div>`;
+            }
+            if (profile.strengths?.length) {
+                html += `<div><h4>Strengths</h4><div class="tag-container">${profile.strengths.map(s => `<div class="tag" style="background-color: #C6F6D5;">${s}</div>`).join('')}</div></div>`;
+            }
+            profileDetails.innerHTML = html || '<p>Your profile insights will appear here...</p>';
+        } catch (error) { console.error('Error fetching profile:', error); }
     }
 
     async function sendMessage(messageText) {
         userInput.disabled = true;
-        typingIndicator.style.display = 'flex';
-        
-        const isKickoff = messageText === '<BEGIN_INTERVIEW>';
+        processLog.innerHTML = '';
+        questionOverlay.style.display = 'none';
 
         try {
             const response = await fetch('/chat', {
@@ -186,65 +279,123 @@
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ user_id: userId, thread_id: threadId, message: messageText }),
             });
-            const data = await response.json();
-            
-            displayQA(data.response);
-            await updateProfileDashboard();
-
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+            while (true) {
+                const { value, done } = await reader.read();
+                if (done) break;
+                const chunk = decoder.decode(value);
+                const lines = chunk.split('\n\n').filter(line => line.trim() !== '');
+                for (const line of lines) {
+                    if (line.startsWith('data: ')) {
+                        const event = JSON.parse(line.substring(6));
+                        if (event.type === 'status') {
+                            const logItem = document.createElement('div');
+                            logItem.className = 'log-item';
+                            logItem.innerHTML = `<span class="log-arrow">→</span> <span class="log-text">${event.content}</span>`;
+                            processLog.appendChild(logItem);
+                            processLog.scrollTop = processLog.scrollHeight;
+                        } else if (event.type === 'final_response') {
+                            displayQA(event.content);
+                            await updateProfileDashboard();
+                        } else if (event.type === 'error') {
+                            displayQA('Sorry, an error occurred.');
+                        }
+                    }
+                }
+            }
         } catch (error) {
             console.error('Error:', error);
-            displayQA('Sorry, an error occurred. Please check the console.');
+            displayQA('Sorry, a connection error occurred.');
         } finally {
-            typingIndicator.style.display = 'none';
             userInput.disabled = false;
-            userInput.value = '';
             userInput.focus();
         }
     }
 
-    async function updateProfileDashboard() {
-        try {
-            const response = await fetch(`/get_profile?user_id=${userId}`);
-            const profile = await response.json();
-            
-            let html = '';
-            if (profile.user_name) html += `<div class="profile-section"><h4>Name</h4><div class="tag">${profile.user_name}</div></div>`;
-            if (profile.domain) html += `<div class="profile-section"><h4>Domain</h4><div class="tag">${profile.domain}</div></div>`;
-            if (profile.technical_skills?.length) {
-                html += `<div class="profile-section"><h4>Technical Skills</h4><div class="tag-container">${profile.technical_skills.map(s => `<div class="tag">${s}</div>`).join('')}</div></div>`;
-            }
-            if (profile.strengths?.length) {
-                html += `<div class="profile-section"><h4>Strengths</h4><div class="tag-container">${profile.strengths.map(s => `<div class="tag strength">${s}</div>`).join('')}</div></div>`;
-            }
-            if (profile.weaknesses?.length) {
-                html += `<div class="profile-section"><h4>Areas for Improvement</h4><div class="tag-container">${profile.weaknesses.map(w => `<div class="tag weakness">${w}</div>`).join('')}</div></div>`;
-            }
-            if (profile.project_experience?.length) {
-                html += `<div class="profile-section"><h4>Project Experience</h4><div class="project-list">${profile.project_experience.map(p => `<div class="project-item">${p}</div>`).join('')}</div></div>`;
-            }
-            
-            profileContent.innerHTML = html || '<p style="color: #888;">No profile data yet. Start answering questions!</p>';
-
-        } catch (error) {
-            console.error('Error fetching profile:', error);
-        }
-    }
-
-    // --- Event Listeners ---
-    userInput.addEventListener('keypress', (event) => {
-        if (event.key === 'Enter' && !event.shiftKey) {
-            event.preventDefault();
-            const lastQuestion = qaContainer.querySelector('.agent-question h2').textContent;
-            const userAnswer = userInput.value;
-            displayQA(lastQuestion, userAnswer);
-            sendMessage(userAnswer);
+    userInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            if (synth) synth.cancel();
+            sendMessage(userInput.value);
+            userInput.value = '';
         }
     });
+    ttsButton.addEventListener('click', () => speakText(agentQuestionText.textContent));
 
-    // --- Initial Greeting ---
     window.addEventListener('load', () => {
+        setupWebcam();
         sendMessage('<BEGIN_INTERVIEW>');
     });
+</script>
+
+<!-- speech recognition -->
+<script>
+    const micButton = document.getElementById("mic-button");
+    const textarea = document.getElementById("user-input");
+    
+    // Check for browser support
+    const SpeechRecognition = window.webkitSpeechRecognition || window.SpeechRecognition;
+    
+    if (SpeechRecognition) {
+        const recognizer = new SpeechRecognition();
+        recognizer.lang = "en-US";
+        recognizer.continuous = true;
+        recognizer.interimResults = true;
+
+        let isRecording = false;
+        let finalTranscript = "";
+
+        micButton.addEventListener("click", function() {
+            if (!isRecording) {
+                finalTranscript = textarea.value; // Start with existing text
+                recognizer.start();
+            } else {
+                recognizer.stop();
+            }
+        });
+
+        recognizer.onstart = () => {
+            isRecording = true;
+            micButton.classList.add("recording");
+            micButton.title = "Stop Listening";
+        };
+
+        recognizer.onend = () => {
+            isRecording = false;
+            micButton.classList.remove("recording");
+            micButton.title = "Start Listening";
+            // Add a space if there's content, to separate future dictations
+            if (finalTranscript.trim().length > 0) {
+                finalTranscript += " ";
+            }
+            textarea.value = finalTranscript;
+        };
+
+        recognizer.onresult = function(event) {
+            let interimTranscript = "";
+            for (let i = event.resultIndex; i < event.results.length; i++) {
+                let transcript = event.results[i][0].transcript;
+                if (event.results[i].isFinal) {
+                    finalTranscript += transcript;
+                } else {
+                    interimTranscript += transcript;
+                }
+            }
+            textarea.value = finalTranscript + interimTranscript;
+            // scroll with the text
+            textarea.scrollTop = textarea.scrollHeight;
+        };
+
+        recognizer.onerror = function(event) {
+            console.error("Speech recognition error", event.error);
+            isRecording = false;
+            micButton.classList.remove("recording");
+        };
+    } else {
+        console.warn("Speech Recognition not supported by this browser.");
+        micButton.style.display = 'none'; 
+    }
 </script>
 
 </body>
