@@ -8,7 +8,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
-            /* Color System */
+            /* our colors */
             --color-white: #ffffff;
             --color-black: #000000;
             --color-gray-50: #f9fafb;
@@ -33,7 +33,7 @@
             --color-green-500: #10b981;
             --color-green-600: #059669;
             
-            /* Semantic Colors */
+            /* what we actually use in the code */
             --color-primary: var(--color-blue-600);
             --color-primary-hover: var(--color-blue-700);
             --color-surface: var(--color-white);
@@ -44,7 +44,7 @@
             --color-success: var(--color-green-500);
             --color-danger: var(--color-red-500);
             
-            /* Spacing */
+            /* spacing units */
             --spacing-xs: 0.25rem;
             --spacing-sm: 0.5rem;
             --spacing-md: 1rem;
@@ -52,14 +52,14 @@
             --spacing-xl: 2rem;
             --spacing-2xl: 3rem;
             
-            /* Border Radius */
+            /* rounded corners */
             --radius-sm: 0.25rem;
             --radius-md: 0.5rem;
             --radius-lg: 0.75rem;
             --radius-xl: 1rem;
             --radius-full: 9999px;
             
-            /* Shadows */
+            /* drop shadows */
             --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
             --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
             --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
@@ -81,7 +81,7 @@
             overflow: hidden;
         }
 
-        /* Top Bar */
+        /* top bar style */
         .top-bar {
             background: var(--color-surface);
             border-bottom: 1px solid var(--color-border);
@@ -131,14 +131,14 @@
             gap: var(--spacing-xs);
         }
 
-        /* Main Content */
+        /* main content area */
         .main-content {
             display: flex;
             height: calc(100vh - 64px);
             overflow: hidden;
         }
 
-        /* Video Container */
+        /* the main video box */
         .video-container {
             flex: 1;
             display: flex;
@@ -149,17 +149,17 @@
             border-radius: var(--radius-xl);
             overflow: hidden;
             box-shadow: var(--shadow-xl);
-            min-height: 0; /* Important for flex child */
+            min-height: 0; /* flexbox fix */
         }
 
         .video-area {
             flex: 1;
             position: relative;
             background: var(--color-gray-800);
-            min-height: 0; /* Important for flex child */
+            min-height: 0; /* flexbox fix */
         }
 
-        /* Main Video (User Webcam) */
+        /* this is your video feed */
         .main-video {
             width: 100%;
             height: 100%;
@@ -171,7 +171,7 @@
             width: 100%;
             height: 100%;
             object-fit: cover;
-            transform: scaleX(-1); /* Mirror effect */
+            transform: scaleX(-1); /* flip video so it's like a mirror */
         }
 
         .video-placeholder {
@@ -226,7 +226,7 @@
             background: var(--color-primary-hover);
         }
 
-        /* Video Overlays */
+        /* stuff on top of the video */
         .video-controls-overlay {
             position: absolute;
             bottom: var(--spacing-md);
@@ -254,7 +254,7 @@
             color: var(--color-danger);
         }
 
-        /* Interviewer Video Thumbnail */
+        /* ai coach video thumbnail */
         .video-thumbnail {
             position: absolute;
             top: var(--spacing-md);
@@ -306,12 +306,12 @@
             color: var(--color-gray-400);
         }
 
-        /* Current Question Overlay */
+        /* the question box overlay */
         .question-overlay {
             position: absolute;
-            bottom: 80px; /* Above control bar */
+            bottom: 80px; /* position above the controls */
             left: var(--spacing-md);
-            right: 220px; /* Space for video thumbnail */
+            right: 220px; /* leave room for the thumbnail */
             background: rgba(0, 0, 0, 0.85);
             backdrop-filter: blur(15px);
             color: var(--color-white);
@@ -358,7 +358,7 @@
             50% { opacity: 0.5; }
         }
 
-        /* Control Bar - Fixed height and better layout */
+        /* bottom control bar */
         .control-bar {
             background: var(--color-surface);
             border-top: 1px solid var(--color-border);
@@ -366,7 +366,7 @@
             display: flex;
             align-items: center;
             gap: var(--spacing-md);
-            height: 80px; /* Fixed height */
+            height: 80px; /* fixed height */
             flex-shrink: 0;
         }
 
@@ -378,7 +378,7 @@
             font-size: 0.875rem;
             font-family: inherit;
             resize: none;
-            height: 48px; /* Fixed height */
+            height: 48px; /* fixed height */
             background: var(--color-white);
             transition: border-color 0.2s;
             line-height: 1.4;
@@ -445,7 +445,7 @@
             100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
         }
 
-        /* Loading indicator */
+        /* ai "thinking" spinner */
         .loading-indicator {
             display: none;
             align-items: center;
@@ -473,7 +473,7 @@
             100% { transform: rotate(360deg); }
         }
 
-        /* Side Panel */
+        /* the right-hand panel */
         .side-panel {
             width: 400px;
             background: var(--color-surface);
@@ -506,7 +506,7 @@
             padding: var(--spacing-lg);
         }
 
-        /* Agent Logs Section */
+        /* ai process logs */
         .logs-section {
             margin-bottom: var(--spacing-xl);
         }
@@ -550,7 +550,7 @@
             word-break: break-word;
         }
 
-        /* Profile Section */
+        /* live profile gets built here */
         .profile-section {
             border-top: 1px solid var(--color-border);
             padding-top: var(--spacing-lg);
@@ -601,7 +601,7 @@
             padding: var(--spacing-lg);
         }
 
-        /* Responsive Design */
+        /* making it work on smaller screens */
         @media (max-width: 1200px) {
             .main-content {
                 flex-direction: column;
@@ -675,7 +675,7 @@
             }
         }
 
-        /* Utility Classes */
+        /* helper classes */
         .hidden {
             display: none !important;
         }
@@ -694,7 +694,7 @@
     </style>
 </head>
 <body>
-    <!-- Top Bar -->
+    <!-- top bar -->
     <header class="top-bar">
         <div class="meeting-info">
             <h1 class="meeting-title">AI Mock Interview</h1>
@@ -713,12 +713,12 @@
         </div>
     </header>
 
-    <!-- Main Content -->
+    <!-- main content area -->
     <main class="main-content">
-        <!-- Video Container -->
+        <!-- left side, video call -->
         <div class="video-container">
             <div class="video-area">
-                <!-- Main Video (User Webcam) -->
+                <!-- your webcam feed -->
                 <div class="main-video">
                     <video id="candidateVideo" class="video-stream" autoplay muted playsinline></video>
                     <div class="video-placeholder" id="videoPlaceholder">
@@ -739,7 +739,7 @@
                     </div>
                 </div>
 
-                <!-- Interviewer Video Thumbnail -->
+                <!-- ai coach thumbnail -->
                 <div class="video-thumbnail">
                     <div class="interviewer-placeholder">
                         <div class="interviewer-avatar">AI</div>
@@ -748,7 +748,7 @@
                     </div>
                 </div>
 
-                <!-- Current Question Overlay -->
+                <!-- question pops up here -->
                 <div class="question-overlay" id="questionOverlay">
                     <button class="tts-button" id="ttsButton" title="Read question aloud">
                         <i class="fas fa-volume-up"></i>
@@ -757,7 +757,7 @@
                 </div>
             </div>
 
-            <!-- Control Bar -->
+            <!-- bottom controls (mic, camera, etc) -->
             <div class="control-bar">
                 <textarea 
                     id="messageInput" 
@@ -793,13 +793,13 @@
             </div>
         </div>
 
-        <!-- Side Panel -->
+        <!-- right side, dashboard -->
         <aside class="side-panel">
             <div class="panel-header">
                 <h2 class="panel-title">Interview Dashboard</h2>
             </div>
             <div class="panel-content">
-                <!-- Agent Logs Section -->
+                <!-- what the ai is doing behind the scenes -->
                 <div class="logs-section">
                     <h3 class="section-title">Agent Process Log</h3>
                     <div class="log-container" id="agentLogs">
@@ -807,7 +807,7 @@
                     </div>
                 </div>
 
-                <!-- User Profile Section -->
+                <!-- ai's analysis of you -->
                 <div class="profile-section">
                     <h3 class="section-title">Live Profile</h3>
                     <div id="profileDetails">
@@ -819,10 +819,10 @@
     </main>
 
     <script>
-        // AI Mock Interview Video Call Application
+        // the main interview app logic
         class AIMockInterviewApp {
             constructor() {
-                // Application state
+                // keeps track of things like mic/camera status
                 this.isVideoOn = false;
                 this.isMuted = false;
                 this.isSpeechToTextActive = false;
@@ -833,7 +833,7 @@
                 this.synthesis = window.speechSynthesis;
                 this.lastAIResponse = '';
                 
-                // User session data - Generate unique IDs for Flask backend
+                // unique ids for this interview session
                 this.userId = this.generateUserId();
                 this.threadId = this.generateThreadId();
                 
@@ -844,7 +844,7 @@
                 this.updateCurrentTime();
                 this.setupWebcam();
                 
-                // Start the interview
+                // kick off the interview
                 this.sendMessage('<BEGIN_INTERVIEW>');
                 
                 console.log('AI Mock Interview App initialized', { userId: this.userId, threadId: this.threadId });
@@ -859,41 +859,41 @@
             }
 
             initializeElements() {
-                // Video elements
+                // video stuff
                 this.candidateVideo = document.getElementById('candidateVideo');
                 this.videoPlaceholder = document.getElementById('videoPlaceholder');
                 this.enableCameraBtn = document.getElementById('enableCameraBtn');
                 
-                // Control buttons
+                // all the buttons
                 this.speechToTextBtn = document.getElementById('speechToTextBtn');
                 this.textToSpeechBtn = document.getElementById('textToSpeechBtn');
                 this.cameraToggleBtn = document.getElementById('cameraToggleBtn');
                 this.muteToggleBtn = document.getElementById('muteToggleBtn');
                 this.endCallBtn = document.getElementById('endCallBtn');
                 
-                // Message elements
+                // chat input and loading spinner
                 this.messageInput = document.getElementById('messageInput');
                 this.loadingIndicator = document.getElementById('loadingIndicator');
                 
-                // Question overlay
+                // the box with the current question
                 this.questionOverlay = document.getElementById('questionOverlay');
                 this.questionText = document.getElementById('questionText');
                 this.ttsButton = document.getElementById('ttsButton');
                 
-                // Side panel elements
+                // dashboard panels
                 this.agentLogs = document.getElementById('agentLogs');
                 this.profileDetails = document.getElementById('profileDetails');
                 
-                // Time elements
+                // clock and timer
                 this.durationElement = document.getElementById('duration');
                 this.currentTimeElement = document.getElementById('current-time');
                 
-                // Audio indicator
+                // mic icon on your video
                 this.userAudioIndicator = document.getElementById('userAudioIndicator');
             }
 
             initializeSpeechRecognition() {
-                // Initialize speech recognition
+                // setting up the speech-to-text
                 const SpeechRecognition = window.webkitSpeechRecognition || window.SpeechRecognition;
                 
                 if (SpeechRecognition) {
@@ -936,19 +936,19 @@
             }
 
             bindEvents() {
-                // Camera controls
+                // camera buttons
                 this.enableCameraBtn.addEventListener('click', () => this.enableCamera());
                 this.cameraToggleBtn.addEventListener('click', () => this.toggleCamera());
                 
-                // Audio controls
+                // mic buttons
                 this.muteToggleBtn.addEventListener('click', () => this.toggleMute());
                 
-                // Speech controls
+                // voice control buttons
                 this.speechToTextBtn.addEventListener('click', () => this.toggleSpeechToText());
                 this.textToSpeechBtn.addEventListener('click', () => this.playTextToSpeech());
                 this.ttsButton.addEventListener('click', () => this.playTextToSpeech());
                 
-                // Message input
+                // handle typing in the text box
                 this.messageInput.addEventListener('keypress', (e) => {
                     if (e.key === 'Enter' && !e.shiftKey) {
                         e.preventDefault();
@@ -956,7 +956,7 @@
                     }
                 });
                 
-                // End call
+                // hang up button
                 this.endCallBtn.addEventListener('click', () => this.endInterview());
             }
 
@@ -1117,12 +1117,12 @@
             }
 
             async sendMessage(messageText) {
-                // Stop any ongoing TTS
+                // stop the ai from talking if it is
                 if (this.synthesis.speaking) {
                     this.synthesis.cancel();
                 }
                 
-                // Show loading state
+                // show the "thinking..." spinner
                 this.messageInput.disabled = true;
                 this.loadingIndicator.classList.add('active');
                 this.clearAgentLogs();
@@ -1202,7 +1202,7 @@
                     <span class="log-text">${message}</span>
                 `;
                 
-                // Clear empty state if present
+                // get rid of the "waiting for activity" message
                 if (this.agentLogs.querySelector('.profile-empty')) {
                     this.agentLogs.innerHTML = '';
                 }
@@ -1299,20 +1299,20 @@
 
             endInterview() {
                 if (confirm('Are you sure you want to end the interview?')) {
-                    // Stop all media streams
+                    // stop all media streams
                     if (this.currentStream) {
                         this.currentStream.getTracks().forEach(track => track.stop());
                     }
                     
-                    // Stop speech synthesis
+                    // stop speech synthesis
                     if (this.synthesis.speaking) {
                         this.synthesis.cancel();
                     }
                     
-                    // Show end message
+                    // show end message
                     this.showQuestion('Thank you for completing the mock interview! You can review your performance in the profile section.');
                     
-                    // Disable inputs
+                    // disable inputs
                     this.messageInput.disabled = true;
                     this.speechToTextBtn.disabled = true;
                     
@@ -1321,13 +1321,13 @@
             }
         }
 
-        // Initialize the application when the page loads
+        // start the app once the page is ready
         let app;
         window.addEventListener('load', () => {
             app = new AIMockInterviewApp();
         });
 
-        // Handle page visibility changes to pause/resume video
+        // pause video if you switch tabs
         document.addEventListener('visibilitychange', () => {
             if (app && app.currentStream) {
                 const videoTrack = app.currentStream.getVideoTracks()[0];
