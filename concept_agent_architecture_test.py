@@ -1,4 +1,5 @@
 from dotenv import load_dotenv
+import time
 load_dotenv()
 
 from typing import TypedDict, Literal, List, Optional, Dict, Any
@@ -11,14 +12,16 @@ from langgraph.checkpoint.memory import InMemorySaver
 from IPython.display import Image, display
 
 from relational_database import RelationalDB
+from vector_store import VectorStore
 
 rdb = RelationalDB()
+vs = VectorStore()
 
 # ------------------------------------------------------------------------------
 # logs
 # ------------------------------------------------------------------------------
 def now_iso() -> str:
-    return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+    return time.strftime("[%Y-%m-%d] [%H:%M:%S]", time.localtime())
 
 def log(msg: str):
     print(f"{now_iso()} {msg}", flush=True)
@@ -77,13 +80,13 @@ def last_user_text(state: State) -> str:
 # new/existing user routing
 # ------------------------------------------------------------------------------
 def gate_is_new_user(state: State) -> dict:
-    print("gate_is_new_user")
+    log("System: Checking if user is new or existing")
     return {}
 
 def route_is_new_user(state: State) -> Literal["new_user", "existing_user"]:
     if "is_new_user" in state:
         flag = bool(state["is_new_user"])
-        print(f"[route_is_new_user] flag={flag}")
+        log(f"[route_is_new_user] flag={flag}")
         return "new_user" if flag else "existing_user"
     # heuristic fallback (optional)
     first = ""
@@ -93,14 +96,41 @@ def route_is_new_user(state: State) -> Literal["new_user", "existing_user"]:
             first = (m.get("content") or "").lower()
             break
     newbie = any(kw in first for kw in ("start", "new user", "first time", "setup"))
-    print(f"[route_is_new_user] inferred_new={newbie}")
+    log(f"[route_is_new_user] inferred_new={newbie}")
     return "new_user" if newbie else "existing_user"
 
 def init_user(state: State) -> dict:
     """
     Initialize the user state for a new user.
     """
-    print("node_init_user")
+    log("System: Initializing new user")
+    user_id = state.get("user_id")
+    if not user_id:
+        raise ValueError("User ID is required for new user initialization")
+    
+    # RelationalDB initialization
+    rdb.create_tables()  # ensure tables exist
+    rdb.upsert_user(
+        user_id=user_id,
+        name=None,
+        domain=None,
+        skills=[],
+        strengths=[],
+        weaknesses=[],
+    )
+    rdb.ensure_academic_summary(user_id) # ensure academic summary exists
+
+    # VectorStore initialization mostly stub
+    summary = "New user (no resume yet). Domain: Unknown."
+    vs.upsert_profile_snapshot(
+        user_id=user_id,
+        domain="Unknown",
+        summary=summary,
+        skills=[],
+        strengths=[],
+        weaknesses=[],
+    )
+
     return {"graph_state": "init_user", "is_new_user": True, "messages": []}
 
 # ------------------------------------------------------------------------------
@@ -110,7 +140,7 @@ def node_ask_domain(state: State) -> dict:
     """
     ask ther user for domain
     """
-    print("node_ask_domain")
+    log("node_ask_domain")
     return {"graph_state": "ask_domain"}
 
 def get_domain(state: State) -> dict:
@@ -118,17 +148,17 @@ def get_domain(state: State) -> dict:
     If the latest user message already contains a domain, store it.
     Otherwise, interrupt to ask for it and wait for a reply.
     """
-    print("node get_domain")
+    user_id = state.get("user_id")
+    log("node get_domain")
     # 1) quick pass: did the user already give a domain?
     text = last_user_text(state)
     if text:
-        print(f"[get_domain] found domain in message: {text}")
+        log(f"[get_domain] found domain in message: {text}")
         return {"graph_state": "have_domain", "domain": text}
 
     # 2) no domain → ask the user via interrupt (human-in-the-loop)
     domain_value = interrupt({
-        "prompt": "Please provide your domain of interest (e.g., Data Science, AI). "
-                  "Type 'skip' to continue without a domain."
+        "prompt": "Please provide your domain of interest (e.g., Data Science, AI, Management, Etc). "
     })
 
     # 3) normalize the domain_value into a string
@@ -142,14 +172,14 @@ def get_domain(state: State) -> dict:
 
     # 4) handle skip or invalid
     if domain.lower() in {"skip", "no", "later", ""}:
-        print("[get_domain] user skipped providing domain")
+        log("[user_id] user skipped providing domain")
         return {"graph_state": "no_domain"}  # no domain key set
 
-    print(f"[get_domain] got domain from user: {domain}")
+    log(f"got domain from user: {user_id} → {domain}")
     return {"graph_state": "have_domain", "domain": domain}
 
 def node_ask_resume(state: State) -> dict:
-    print("node2_ask_resume")
+    log("node2_ask_resume")
     return {"graph_state": "ask_resume"}
 
 def get_resume_url(state: State) -> dict:
@@ -157,11 +187,11 @@ def get_resume_url(state: State) -> dict:
     If the latest user message already contains a URL, store it.
     Otherwise, interrupt to ask for it and wait for a reply.
     """
-    print("node get_resume_url")
+    log("node get_resume_url")
     # 1) quick pass: did the user already give a URL?
     text = last_user_text(state)
     if text.startswith(("http://", "https://")):
-        print(f"[get_resume_url] found URL in message: {text}")
+        log(f"[get_resume_url] found URL in message: {text}")
         return {"graph_state": "have_resume_url", "resume_url": text}
 
     # 2) no URL → ask the user via interrupt (human-in-the-loop)
@@ -181,86 +211,91 @@ def get_resume_url(state: State) -> dict:
 
     # 4) handle skip or invalid
     if url.lower() in {"skip", "no", "later", ""}:
-        print("[get_resume_url] user skipped providing URL")
+        log("[get_resume_url] user skipped providing URL")
         return {"graph_state": "no_resume_url"}  # no resume_url key set
 
     if not url.startswith(("http://", "https://")):
-        print(f"[get_resume_url] invalid URL provided: {url!r} (continuing without)")
+        log(f"[get_resume_url] invalid URL provided: {url!r} (continuing without)")
         return {"graph_state": "no_resume_url"}
 
-    print(f"[get_resume_url] got URL from user: {url}")
+    log(f"got URL from user: {state.get('user_id')} → {url}")
+    
+    # 5) store the URL in the state
+    state["resume_url"] = url
+
     return {"graph_state": "have_resume_url", "resume_url": url}
 
 # ----- Resume routing + pipeline -----
 def is_resume_url(state: State) -> Literal["resume_is_present", "resume_is_not_present"]:
     # prefer the explicit field set by get_resume_url; fall back to last message
     text = (state.get("resume_url") or last_user_text(state)).strip()
-    print(f"[is_resume_url] checking: {text!r}")
+    log(f"[is_resume_url] checking: {text!r}")
     return "resume_is_present" if text.startswith(("http://", "https://")) else "resume_is_not_present"
 
 def extract_resume(state: State) -> dict:
-    print("node extract_resume")
+    log("node extract_resume")
+    log(f"Extracting resume from URL: {state.get('resume_url')}")
     # actual extraction would use state["resume_url"]
     return {"graph_state": "transform_resume"}
 
 def transform_resume(state: State) -> dict:
-    print("node transform_resume")
+    log("node transform_resume")
     return {"graph_state": "load_resume"}
 
 def load_resume(state: State) -> dict:
-    print("node load_resume")
+    log("node load_resume")
     return {"graph_state": "update_profile"}
 
 def update_profile(state: State) -> dict:
-    print("node update_profile")
+    log("node update_profile")
     return {"graph_state": "update_profile"}
 
 # ----- interview loop -----
 def query_question(state: State) -> dict:
-    print("node query_question")
+    log("node query_question")
     return {"graph_state": "query_question"}
 
 def ask_question(state: State) -> dict:
-    print("node ask_question")
+    log("node ask_question")
     return {"graph_state": "ask_question"}
 
 def get_answer(state: State) -> dict:
-    print("node get_answer")
+    log("node get_answer")
     return {"graph_state": "get_answer"}
 
 def review_answer(state: State) -> dict:
-    print("node review_answer")
+    log("node review_answer")
     return {"graph_state": "review_answer"}
 
 def calculate_score(state: State) -> dict:
-    print("node calculate_score")
+    log("node calculate_score")
     return {"graph_state": "calculate_score"}
 
 def update_profile_with_score(state: State) -> dict:
-    print("node update_profile_with_score")
+    log("node update_profile_with_score")
     return {"graph_state": "update_profile_with_score"}
 
 def give_feedback(state: State) -> dict:
-    print("node give_feedback")
+    log("node give_feedback")
     return {"graph_state": "give_feedback"}
 
 # ----- continue / exit routing -----
 def gate_should_continue(state: State) -> dict:
-    print("gate_should_continue")
+    log("gate_should_continue")
     return {"graph_state": "should_continue"}
 
 def route_should_continue(state: State) -> Literal["continue", "exit"]:
     # 1) explicit flag wins
     flag = (state.get("should_continue") or "").strip().lower()
     if flag in {"exit", "quit", "stop"}:
-        print("[route_should_continue] flag → EXIT")
+        log("[route_should_continue] flag → EXIT")
         return "exit"
     # 2) infer from last user message
     msg = last_user_text(state).lower()
     if any(w in msg for w in ("exit", "quit", "stop")):
-        print(f"[route_should_continue] message '{msg}' → EXIT")
+        log(f"[route_should_continue] message '{msg}' → EXIT")
         return "exit"
-    print("[route_should_continue] → CONTINUE")
+    log("[route_should_continue] → CONTINUE")
     return "continue"
 
 # ------------------------------------------------------------------------------
@@ -339,14 +374,14 @@ graph = builder.compile(checkpointer=checkpointer)
 
 thread = {"configurable": {"thread_id": "demo-1"}}
 out = graph.invoke(
-    {"is_new_user": not(rdb.user_exists_rdb(user_id="123")), "messages": [{"role": "user"}], "should_continue": "exit"},
+        { "user_id": "123", "is_new_user": not(rdb.user_exists_rdb(user_id="123")), "messages": [{"role": "user"}], "should_continue": "exit"},
     config=thread
 )
 
 
 
-print(out.get("__interrupt__"))
+log(out.get("__interrupt__"))
 out = graph.invoke(Command(resume="Data Science"), config=thread)
 
-print(out.get("__interrupt__"))
+log(out.get("__interrupt__"))
 out = graph.invoke(Command(resume="https://abc.com/resume.pdf"), config=thread)
