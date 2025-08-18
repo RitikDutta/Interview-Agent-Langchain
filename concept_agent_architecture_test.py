@@ -1,7 +1,7 @@
 from dotenv import load_dotenv
 load_dotenv()
 
-from typing import TypedDict, Literal, List
+from typing import TypedDict, Literal, List, Optional, Dict, Any
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_core.tools import tool
@@ -9,6 +9,19 @@ from langgraph.graph import StateGraph, START, END
 from langgraph.types import Command, interrupt
 from langgraph.checkpoint.memory import InMemorySaver
 from IPython.display import Image, display
+
+from relational_database import RelationalDB
+
+rdb = RelationalDB()
+
+# ------------------------------------------------------------------------------
+# logs
+# ------------------------------------------------------------------------------
+def now_iso() -> str:
+    return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+
+def log(msg: str):
+    print(f"{now_iso()} {msg}", flush=True)
 
 # ------------------------------------------------------------------------------
 # LLM
@@ -43,8 +56,12 @@ class State(TypedDict, total=False):
     should_continue: str
     messages: List[Message]
     question: str
-    domain: str
-    resume_url: str  # set by get_resume_url when available
+    domain: Optional[str]
+    resume_url: Optional[str]
+
+    user_id: str
+    profile: Dict[str, Any]   # holds name/domain/skills/strengths/weaknesses/summary (optional)
+    step: Optional[str]
 
 # ------------------------------------------------------------------------------
 # helpers
@@ -79,40 +96,57 @@ def route_is_new_user(state: State) -> Literal["new_user", "existing_user"]:
     print(f"[route_is_new_user] inferred_new={newbie}")
     return "new_user" if newbie else "existing_user"
 
+def init_user(state: State) -> dict:
+    """
+    Initialize the user state for a new user.
+    """
+    print("node_init_user")
+    return {"graph_state": "init_user", "is_new_user": True, "messages": []}
+
 # ------------------------------------------------------------------------------
 # nodes
 # ------------------------------------------------------------------------------
 def node_ask_domain(state: State) -> dict:
     """
-    Ask the user for their domain — demo a tool call that prints it in style.
-    We read the latest user message as the domain for this simple demo.
+    ask ther user for domain
     """
-    print("node1_ask_domain")
-    domain_text = last_user_text(state) or "unknown"
+    print("node_ask_domain")
+    return {"graph_state": "ask_domain"}
 
-    prompt = (
-        "You have a tool named 'pretty_print_domain'. "
-        "Call it exactly once using the user's domain below.\n\n"
-        f"User domain: {domain_text}"
-    )
-    ai_msg = llm_with_tools.invoke([
-        SystemMessage(content="You MUST call the tool."),
-        HumanMessage(content=prompt)
-    ])
+def get_domain(state: State) -> dict:
+    """
+    If the latest user message already contains a domain, store it.
+    Otherwise, interrupt to ask for it and wait for a reply.
+    """
+    print("node get_domain")
+    # 1) quick pass: did the user already give a domain?
+    text = last_user_text(state)
+    if text:
+        print(f"[get_domain] found domain in message: {text}")
+        return {"graph_state": "have_domain", "domain": text}
 
-    called = False
-    for tc in getattr(ai_msg, "tool_calls", []) or []:
-        if tc["name"] == "pretty_print_domain":
-            res = pretty_print_domain.invoke(tc["args"])
-            print(res)  # show tool output in console
-            called = True
+    # 2) no domain → ask the user via interrupt (human-in-the-loop)
+    domain_value = interrupt({
+        "prompt": "Please provide your domain of interest (e.g., Data Science, AI). "
+                  "Type 'skip' to continue without a domain."
+    })
 
-    if not called:
-        # fallback if the model didn't call the tool
-        res = pretty_print_domain.invoke({"domain": domain_text})
-        print(res)
+    # 3) normalize the domain_value into a string
+    if isinstance(domain_value, dict):
+        # accept common shapes: {"domain": ...} or {"content": ...}
+        domain = domain_value.get("domain") or domain_value.get("content") or ""
+    else:
+        domain = str(domain_value or "")
 
-    return {"graph_state": "ask_domain", "domain": domain_text}
+    domain = domain.strip()
+
+    # 4) handle skip or invalid
+    if domain.lower() in {"skip", "no", "later", ""}:
+        print("[get_domain] user skipped providing domain")
+        return {"graph_state": "no_domain"}  # no domain key set
+
+    print(f"[get_domain] got domain from user: {domain}")
+    return {"graph_state": "have_domain", "domain": domain}
 
 def node_ask_resume(state: State) -> dict:
     print("node2_ask_resume")
@@ -235,7 +269,9 @@ def route_should_continue(state: State) -> Literal["continue", "exit"]:
 builder = StateGraph(State)
 
 builder.add_node("gate_is_new_user", gate_is_new_user)
+builder.add_node("init_user", init_user)
 builder.add_node("ask_domain", node_ask_domain)
+builder.add_node("get_domain", get_domain)
 builder.add_node("ask_resume", node_ask_resume)
 builder.add_node("get_resume_url", get_resume_url)
 
@@ -258,11 +294,14 @@ builder.add_edge(START, "gate_is_new_user")
 builder.add_conditional_edges(
     "gate_is_new_user",
     route_is_new_user,
-    {"new_user": "ask_domain", "existing_user": "query_question"},
+    {"new_user": "init_user", "existing_user": "query_question"},
 )
+# New user initialization
+builder.add_edge("init_user", "ask_domain")
 
 # Domain → Resume
-builder.add_edge("ask_domain", "ask_resume")
+builder.add_edge("ask_domain", "get_domain")
+builder.add_edge("get_domain", "ask_resume")
 builder.add_edge("ask_resume", "get_resume_url")
 
 # Route based on URL presence (after get_resume_url)
@@ -300,8 +339,14 @@ graph = builder.compile(checkpointer=checkpointer)
 
 thread = {"configurable": {"thread_id": "demo-1"}}
 out = graph.invoke(
-    {"is_new_user": True, "messages": [{"role": "user", "content": "Data Science"}], "should_continue": "exit"},
+    {"is_new_user": not(rdb.user_exists_rdb(user_id="123")), "messages": [{"role": "user"}], "should_continue": "exit"},
     config=thread
 )
-print(out.get("__interrupt__"))   # shows: {"prompt": "...paste your resume URL..."}
+
+
+
+print(out.get("__interrupt__"))
+out = graph.invoke(Command(resume="Data Science"), config=thread)
+
+print(out.get("__interrupt__"))
 out = graph.invoke(Command(resume="https://abc.com/resume.pdf"), config=thread)
