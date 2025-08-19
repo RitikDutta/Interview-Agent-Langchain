@@ -13,6 +13,7 @@ from IPython.display import Image, display
 
 from relational_database import RelationalDB
 from vector_store import VectorStore
+from resume_ETL import ResumeETL
 
 rdb = RelationalDB()
 vs = VectorStore()
@@ -235,7 +236,10 @@ def is_resume_url(state: State) -> Literal["resume_is_present", "resume_is_not_p
 def extract_resume(state: State) -> dict:
     log("node extract_resume")
     log(f"Extracting resume from URL: {state.get('resume_url')}")
-    # actual extraction would use state["resume_url"]
+    resume_etl = ResumeETL(
+        user_id=state.get("user_id"),
+        verbose=True,
+    )
     return {"graph_state": "transform_resume"}
 
 def transform_resume(state: State) -> dict:
