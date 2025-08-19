@@ -233,7 +233,7 @@ def is_resume_url(state: State) -> Literal["resume_is_present", "resume_is_not_p
     log(f"[is_resume_url] checking: {text!r}")
     return "resume_is_present" if text.startswith(("http://", "https://")) else "resume_is_not_present"
 
-def extract_resume(state: State) -> dict:
+def node_resume_ETL(state: State) -> dict:
     log("node extract_resume")
     log(f"Extracting resume from URL: {state.get('resume_url')}")
     resume_etl = ResumeETL(
@@ -241,14 +241,6 @@ def extract_resume(state: State) -> dict:
         verbose=True,
     )
     return {"graph_state": "transform_resume"}
-
-def transform_resume(state: State) -> dict:
-    log("node transform_resume")
-    return {"graph_state": "load_resume"}
-
-def load_resume(state: State) -> dict:
-    log("node load_resume")
-    return {"graph_state": "update_profile"}
 
 def update_profile(state: State) -> dict:
     log("node update_profile")
@@ -314,9 +306,7 @@ builder.add_node("get_domain", get_domain)
 builder.add_node("ask_resume", node_ask_resume)
 builder.add_node("get_resume_url", get_resume_url)
 
-builder.add_node("extract_resume", extract_resume)
-builder.add_node("transform_resume", transform_resume)
-builder.add_node("load_resume", load_resume)
+builder.add_node("node_resume_ETL", extract_resume)
 builder.add_node("update_profile", update_profile)
 
 builder.add_node("query_question", query_question)
@@ -351,9 +341,7 @@ builder.add_conditional_edges(
 )
 
 # Resume processing
-builder.add_edge("extract_resume", "transform_resume")
-builder.add_edge("transform_resume", "load_resume")
-builder.add_edge("load_resume", "update_profile")
+builder.add_edge("node_resume_ETL", "update_profile")
 
 # Interview loop
 builder.add_edge("update_profile", "query_question")
