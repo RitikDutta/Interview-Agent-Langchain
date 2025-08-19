@@ -41,11 +41,16 @@ class RelationalDB:
         except Error as e:
             raise RuntimeError(f"MySQL pool error: {e}")
     # placeholder code , logic to be implemented later
-    def user_exists_rdb(self, user_id: str) -> bool:
-        """
-        Check if a user exists in the database.
-        """
-        return False 
+def user_exists_rdb(self, user_id: str) -> bool:
+    sql = "SELECT 1 FROM users WHERE user_id=%s LIMIT 1"
+    conn = self._conn()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(sql, (user_id,))
+            return cur.fetchone() is not None
+    finally:
+        conn.close()
+
         
 
     def _conn(self):
@@ -202,5 +207,42 @@ class RelationalDB:
                 )
             conn.commit()
             print(f"[rdbms] users partial update OK  user_id={user_id} domain={new_domain}")
+        finally:
+            conn.close()
+
+    def get_user_profile(self, user_id: str) -> dict | None:
+        """
+        Return a normalized profile row for this user_id or None if missing.
+        List fields are parsed from JSON. Includes updated_at when present.
+        """
+        sql = "SELECT user_id, name, domain, skills, strengths, weaknesses, updated_at FROM users WHERE user_id=%s"
+        conn = self._conn()
+        try:
+            with conn.cursor(dictionary=True) as cur:
+                cur.execute(sql, (user_id,))
+                row = cur.fetchone()
+            if not row:
+                print(f"[rdbms] get_user_profile: not found user_id={user_id}")
+                return None
+
+            # parse JSON list fields
+            import json as _json
+            def _parse(v):
+                try:
+                    return _json.loads(v) if isinstance(v, str) and v.strip() else []
+                except Exception:
+                    return []
+
+            profile = {
+                "user_id": row["user_id"],
+                "name": row.get("name"),
+                "domain": row.get("domain"),
+                "skills": _parse(row.get("skills")),
+                "strengths": _parse(row.get("strengths")),
+                "weaknesses": _parse(row.get("weaknesses")),
+                "updated_at": row.get("updated_at"),
+            }
+            print(f"[rdbms] get_user_profile OK  user_id={user_id}")
+            return profile
         finally:
             conn.close()
