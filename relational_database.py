@@ -41,15 +41,15 @@ class RelationalDB:
         except Error as e:
             raise RuntimeError(f"MySQL pool error: {e}")
     # placeholder code , logic to be implemented later
-def user_exists_rdb(self, user_id: str) -> bool:
-    sql = "SELECT 1 FROM users WHERE user_id=%s LIMIT 1"
-    conn = self._conn()
-    try:
-        with conn.cursor() as cur:
-            cur.execute(sql, (user_id,))
-            return cur.fetchone() is not None
-    finally:
-        conn.close()
+    def user_exists_rdb(self, user_id: str) -> bool:
+        sql = "SELECT 1 FROM users WHERE user_id=%s LIMIT 1"
+        conn = self._conn()
+        try:
+            with conn.cursor() as cur:
+                cur.execute(sql, (user_id,))
+                return cur.fetchone() is not None
+        finally:
+            conn.close()
 
         
 
@@ -72,13 +72,14 @@ def user_exists_rdb(self, user_id: str) -> bool:
         create_academic = """
         CREATE TABLE IF NOT EXISTS academic_summary (
             user_id VARCHAR(64) PRIMARY KEY,
-            metric1_score DECIMAL(5,2) DEFAULT 0.00,
-            metric2_score DECIMAL(5,2) DEFAULT 0.00,
-            metric3_score DECIMAL(5,2) DEFAULT 0.00,
+            technical_accuracy TINYINT UNSIGNED NOT NULL DEFAULT 0,
+            reasoning_depth TINYINT UNSIGNED NOT NULL DEFAULT 0,
+            communication_clarity TINYINT UNSIGNED NOT NULL DEFAULT 0,
             score_overall DECIMAL(5,2) DEFAULT 0.00,
             FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
         ) ENGINE=InnoDB;
         """
+
 
         conn = self._conn()
         try:
@@ -132,7 +133,7 @@ def user_exists_rdb(self, user_id: str) -> bool:
 
     def ensure_academic_summary(self, user_id: str):
         sql = """
-        INSERT IGNORE INTO academic_summary (user_id, metric1_score, metric2_score, metric3_score, score_overall)
+        INSERT IGNORE INTO academic_summary (user_id, technical_accuracy, reasoning_depth, communication_clarity, score_overall)
         VALUES (%s, 0.00, 0.00, 0.00, 0.00);
         """
         conn = self._conn()
