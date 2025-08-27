@@ -292,9 +292,6 @@ def get_resume_url(state: State) -> dict:
         return {"graph_state": "no_resume_url"}
 
     log(f"got URL from user: {state.get('user_id')} → {url}")
-    
-    # 5) store the URL in the state
-    state["resume_url"] = url
 
     return {"graph_state": "have_resume_url", "resume_url": url}
 
