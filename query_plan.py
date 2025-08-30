@@ -1,5 +1,6 @@
 # strategic_question_router.py
 from __future__ import annotations
+import os
 import random
 from typing import List, Optional, Dict, Any, Literal
 
@@ -44,37 +45,74 @@ class StrategicQuestionRouter:
         questions_namespace: str = "questions_v4",
         model: str = "gemini-2.5-flash",
         temperature: float = 0.2,
+        retriever: Optional[QuestionSearch] = None,
     ):
         self.rdb = rdb
         self.vs = vs
         self.ns = questions_namespace
         self.llm = ChatGoogleGenerativeAI(model=model, temperature=temperature)
+        # ensure a default retriever for retrieve()
+        self.retriever = retriever or QuestionSearch(namespace=self.ns)
 
         
 
-        # one compact prompt to convert profile → query plan
+        # one compact prompt to convert profile → query plan (topic-only query)
         self.prompt = ChatPromptTemplate.from_messages([
-            ("system",
-             "You are a concise interview question planner. "
-             "Given profile + chosen strategy, output a compact plan for semantic retrieval. "
-             "Prefer semantic-only first (lang filter), because strict domain labels in question bank may differ."),
-            ("human",
-             "STRATEGY: {strategy}\n"
-             "DOMAIN: {domain}\n"
-             "SKILLS: {skills}\n"
-             "STRENGTHS: {strengths}\n"
-             "WEAKNESSES: {weaknesses}\n"
-             "SCORES: {scores}\n"
-             "USER_SUMMARY: {summary}\n\n"
-             "Rules:\n"
-             "- Keep 'query' short (<=12 words) but meaningful.\n"
-             "- If strategy='scores' and score_overall < 4, set difficulty='easy' and avoid niche skill filters.\n"
-             "- If strategy='skills', you may set 'skill' to a single normalized skill to bias retrieval.\n"
-             "- If strategy='weakness', focus query on one weakness area; difficulty='easy' or 'medium'.\n"
-             "- If strategy='strength', push difficulty='hard' and aim deeper in that strength.\n"
-             "- domain is optional; only set if obviously helpful.\n"
-             "Return JSON with keys: strategy, query, domain, skill, difficulty, lang.")
+            (
+                "system",
+                "You are a senior interview question planner. Your task is to translate the\n"
+                "caller-provided strategy plus the user profile and academic scores into a\n"
+                "compact retrieval plan. The plan is for semantic search; the 'query' must\n"
+                "be a single topic/subject phrase, not an actual question. Respect the\n"
+                "provided strategy and do not switch it.\n\n"
+                "Output rules:\n"
+                "- 'query' is a short topic (<= 8 words), e.g., 'hypothesis testing', 'hash maps',\n"
+                "  'k-means clustering'. Never output a full question; no question marks or directives.\n"
+                "- Prefer semantic-first retrieval; keep domain/skill optional unless clearly helpful.\n"
+                "- 'skill' (if set) must be a single normalized label from inputs (snake-like).\n"
+                "- Use 'lang' as provided; prefer 'en' if unspecified.\n\n"
+                "Strategy-specific guidance:\n"
+                "- scores: Prioritize 'scores'. If score_overall == 0 (or missing), set\n"
+                "  difficulty='easy' and avoid niche skills; include domain if available.\n"
+                "  Otherwise, if score_overall < 4, set difficulty='easy'. Choose a foundational\n"
+                "  topic to build confidence within the domain.\n"
+                "- skills: Focus on exactly one skill (if multiple, pick one). Set 'skill' to that\n"
+                "  normalized skill and choose a representative topic for it.\n"
+                "- weakness: Target one weakness area; choose a remedial/fundamental topic;\n"
+                "  difficulty should be 'easy' or 'medium'.\n"
+                "- strength: Choose a deeper/advanced topic in a strength; set difficulty='hard'.\n\n"
+                "Return only the structured content for fields: strategy, query, domain, skill, difficulty, lang."
+            ),
+            (
+                "human",
+                "STRATEGY: {strategy}\n"
+                "DOMAIN: {domain}\n"
+                "SKILLS: {skills}\n"
+                "STRENGTHS: {strengths}\n"
+                "WEAKNESSES: {weaknesses}\n"
+                "SCORES: {scores}\n"
+                "USER_SUMMARY: {summary}"
+            ),
         ])
+
+    @staticmethod
+    def _normalize_query_topic(text: str) -> str:
+        """Force the query to be a short topic phrase, never a question."""
+        if not text:
+            return ""
+        t = str(text).strip()
+        # remove common prefixes
+        t = re.sub(r"(?i)^(topic|subject|area|focus|plan|query|ask( about)?):?\s*", "", t)
+        # drop question-like punctuation and trailing dots
+        t = t.strip().rstrip("?.! ")
+        # remove leading verbs like 'explain', 'describe', 'how to', 'what is'
+        t = re.sub(r"(?i)^(explain|describe|discuss|how to|what is|why|when|give me|ask about)\s+", "", t)
+        # collapse spaces and cap to 8 words
+        t = re.sub(r"\s+", " ", t)
+        words = t.split()
+        if len(words) > 8:
+            t = " ".join(words[:8])
+        return t
 
     def _get_profile(self, user_id: str) -> Dict[str, Any]:
         rdb_prof = self.rdb.get_user_profile(user_id) or {}
@@ -138,6 +176,43 @@ class StrategicQuestionRouter:
         plan.skill = snake(plan.skill or "")
         plan.difficulty = snake(plan.difficulty or "") or None
         plan.lang = plan.lang or "en"
+
+        # Enforce strategy-specific defaults requested
+        score_overall = (prof.get("scores") or {}).get("score_overall") or 0.0
+        if strategy == "scores":
+            # If score is 0, prefer easy and include domain when available
+            if score_overall == 0:
+                plan.difficulty = plan.difficulty or "easy"
+                if not plan.domain and prof.get("domain"):
+                    plan.domain = prof["domain"]
+            elif score_overall < 4:
+                plan.difficulty = plan.difficulty or "easy"
+        elif strategy == "weakness":
+            plan.difficulty = plan.difficulty or "easy"
+        elif strategy == "strength":
+            plan.difficulty = "hard"
+
+        # Force the returned strategy to match caller choice
+        plan.strategy = strategy  # type: ignore
+
+        # Ensure the query is a topic (never a full question)
+        plan.query = self._normalize_query_topic(plan.query)
+        if not plan.query:
+            # Fallback topic based on available signals
+            base: Optional[str] = None
+            if strategy == "skills" and (plan.skill or picked_skill):
+                base = (plan.skill or picked_skill or "").replace("_", " ")
+            elif strategy == "strength" and prof.get("strengths"):
+                base = (prof["strengths"][0] or "").replace("_", " ")
+            elif strategy == "weakness" and prof.get("weaknesses"):
+                base = (prof["weaknesses"][0] or "").replace("_", " ")
+            else:  # scores or unknown
+                base = (prof.get("domain") or "fundamentals").replace("_", " ")
+
+            if strategy in ("scores", "weakness") and base:
+                plan.query = self._normalize_query_topic(f"{base} fundamentals")
+            else:
+                plan.query = self._normalize_query_topic(base)
 
         return plan
 
