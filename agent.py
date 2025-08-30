@@ -101,7 +101,7 @@ class InterviewAgent:
             if not state.get("domain"):
                 return "ask_domain"
 
-            # We have domain but no profile persisted yet: ask for resume or route
+            # ask for resume to update profile
             if looks_like_url(last_text):
                 return "route_resume"
             if last_text.lower() == "skip":
@@ -250,12 +250,12 @@ class InterviewAgent:
         )
 
         # Most nodes end the turn (wait for user), except the persist→respond chain
-        graph.add_edge("ask_domain", END)
-        graph.add_edge("handle_domain", END)
-        graph.add_edge("ask_resume", END)
-        graph.add_edge("route_resume", "persist_profile")
-        graph.add_edge("persist_profile", "respond")
-        graph.add_edge("respond", END)
+            graph.add_edge("ask_domain", END)
+            graph.add_edge("handle_domain", END)
+            graph.add_edge("ask_resume", END)
+            graph.add_edge("route_resume", "persist_profile")
+            graph.add_edge("persist_profile", "respond")
+            graph.add_edge("respond", END)
 
         checkpointer = MemorySaver()
         return graph.compile(checkpointer=checkpointer)
