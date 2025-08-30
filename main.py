@@ -116,11 +116,11 @@ class User(UserMixin):
 def load_user(user_id):
     return User(user_id)
 
-@app.route('/interview')
+@app.route('/')
 def home():
     return render_template('home.html')
 
-@app.route('/')
+@app.route('/home')
 def mainp():
     current_song, image = get_current_song()
     print("SONG: ", current_song)
