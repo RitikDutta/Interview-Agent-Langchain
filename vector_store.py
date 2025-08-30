@@ -1,11 +1,7 @@
 # vector_store.py
-# ----------------
-# Pinecone v3 wrapper for profile snapshots.
-# - Uses OpenAI text-embedding-3-small (1536 dims)
-# - Stores ONE vector per user in namespace PROFILES_NAMESPACE (default: profiles_v1)
-# - Metadata kept small & useful; you can extend later.
 
 import os
+import re
 import time
 from typing import List, Optional, Dict, Any
 
@@ -15,6 +11,17 @@ from pinecone import Pinecone, ServerlessSpec
 
 def _ts() -> int:
     return int(time.time())
+
+_SNAKE_RE_1 = re.compile(r"[^A-Za-z0-9]+")
+_SNAKE_RE_2 = re.compile(r"_+")
+
+def _to_snake_lower(s: str) -> str:
+    s = _SNAKE_RE_1.sub("_", (s or "").strip())
+    s = _SNAKE_RE_2.sub("_", s).strip("_")
+    return s.lower()
+
+def _snake_list(xs: Optional[List[str]]) -> List[str]:
+    return [_to_snake_lower(x) for x in (xs or []) if isinstance(x, str) and x.strip()]
 
 
 class VectorStore:
@@ -65,21 +72,45 @@ class VectorStore:
         skills: Optional[List[str]] = None,
         strengths: Optional[List[str]] = None,
         weaknesses: Optional[List[str]] = None,
+        categories: Optional[List[str]] = None,  # retained for compatibility; ignored
     ) -> str:
-        """Create/update the single profile vector for a user."""
-        vid = f"profile_{user_id}"
+        """
+        Create/update the single profile vector for a user.
+
+        Notes:
+        - Stores ONLY canonical names for `domain` and `skills`.
+        - Drops *_key fields and categories entirely.
+        - `categories` arg is ignored for compatibility (safe no-op).
+        """
+        # Soft warning if callers still pass categories
+        try:
+            if categories:
+                import logging
+                logging.getLogger(__name__).debug(
+                    "VectorStore.upsert_profile_snapshot: 'categories' is ignored now."
+                )
+        except Exception:
+            pass
+
+        vid = user_id
         vec = self._embed_one(summary)
+
         md: Dict[str, Any] = {
             "type": "profile_snapshot",
+            "version": "v3",         # bumped: removed *_key + categories
             "user_id": user_id,
-            "domain": (domain or "unknown").lower(),
-            "skills": [s.lower() for s in (skills or [])],
+
+            # Canonical values only
+            "domain": (domain or "unknown"),
+            "skills": (skills or []),
+
+            # Other attrs
             "strengths": strengths or [],
             "weaknesses": weaknesses or [],
             "user_summary": summary,
-            "version": "v1",
             "updated_at": _ts(),
         }
+
         self.index.upsert(
             vectors=[(vid, vec, md)],
             namespace=self.namespace,
@@ -90,22 +121,20 @@ class VectorStore:
     def get_user_profile(self, user_id: str) -> dict | None:
         """
         Fetch the user's profile vector metadata from Pinecone.
-        Returns a dict with {id, metadata, values?} or None if absent.
-        Note: values (the raw embedding) are not returned by default to save bandwidth.
+        Returns a dict with {id, namespace, metadata} or None if absent.
         """
-        vid = f"profile_{user_id}"
+        vid = user_id
         out = self.index.fetch(ids=[vid], namespace=self.namespace)
         vec = out.vectors.get(vid) if hasattr(out, "vectors") else None
         if not vec:
             print(f"[vector] get_user_profile: not found  ns={self.namespace} id={vid}")
             return None
 
-        # Pinecone v3 returns an object; normalize to a plain dict
         profile = {
             "id": vid,
             "namespace": self.namespace,
             "metadata": dict(vec.metadata) if hasattr(vec, "metadata") else {},
-            # include embedding if you want (commented to keep it light)
+            # To include values:
             # "values": list(vec.values) if hasattr(vec, "values") else None,
         }
         print(f"[vector] get_user_profile OK  ns={self.namespace} id={vid}")
