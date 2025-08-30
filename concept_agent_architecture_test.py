@@ -1,5 +1,8 @@
 from dotenv import load_dotenv
 import time
+import os
+import sys
+from log_utils import get_logger
 load_dotenv()
 import re
 from pathlib import Path
@@ -29,14 +32,8 @@ retriever = QuestionSearch(namespace="questions_v4")
 set_score = ScoreUpdater(rdb)
 
 
-# ------------------------------------------------------------------------------
-# logs
-# ------------------------------------------------------------------------------
-def now_iso() -> str:
-    return time.strftime("[%Y-%m-%d] [%H:%M:%S]", time.localtime())
-
-def log(msg: str):
-    print(f"{now_iso()} {msg}", flush=True)
+# Use shared logger (child namespace for clarity)
+logger = get_logger("agent.flow")
 
 # ------------------------------------------------------------------------------
 # LLM
@@ -185,13 +182,13 @@ def _normalize_resume_input(value) -> tuple[str, str]:
 # new/existing user routing
 # ------------------------------------------------------------------------------
 def gate_is_new_user(state: State) -> dict:
-    log("System: Checking if user is new or existing")
+    logger.info("System: Checking if user is new or existing")
     return {}
 
 def route_is_new_user(state: State) -> Literal["new_user", "existing_user"]:
     if "is_new_user" in state:
         flag = bool(state["is_new_user"])
-        log(f"[route_is_new_user] flag={flag}")
+        logger.debug(f"[route_is_new_user] flag={flag}")
         return "new_user" if flag else "existing_user"
     # heuristic fallback (optional)
     first = ""
@@ -201,14 +198,14 @@ def route_is_new_user(state: State) -> Literal["new_user", "existing_user"]:
             first = (m.get("content") or "").lower()
             break
     newbie = any(kw in first for kw in ("start", "new user", "first time", "setup"))
-    log(f"[route_is_new_user] inferred_new={newbie}")
+    logger.debug(f"[route_is_new_user] inferred_new={newbie}")
     return "new_user" if newbie else "existing_user"
 
 def init_user(state: State) -> dict:
     """
     Initialize the user state for a new user.
     """
-    log("System: Initializing new user")
+    logger.info("System: Initializing new user")
     user_id = state.get("user_id")
     if not user_id:
         raise ValueError("User ID is required for new user initialization")
@@ -245,7 +242,7 @@ def node_ask_domain(state: State) -> dict:
     """
     ask ther user for domain
     """
-    log("node_ask_domain")
+    logger.debug("node_ask_domain")
     return {"graph_state": "ask_domain"}
 
 def get_domain(state: State) -> dict:
@@ -254,7 +251,7 @@ def get_domain(state: State) -> dict:
     Otherwise, interrupt to ask for it and wait for a reply.
     """
     user_id = state.get("user_id")
-    log("node get_domain")
+    logger.debug("node get_domain")
 
     # 2) no domain
     domain_value = interrupt({
@@ -272,14 +269,14 @@ def get_domain(state: State) -> dict:
 
     # 4) handle skip or invalid
     if domain.lower() in {"skip", "no", "later", ""}:
-        log("[user_id] user skipped providing domain")
+        logger.info("[get_domain] user skipped providing domain")
         return {"graph_state": "no_domain"}  # no domain key set
 
-    log(f"got domain from user: {user_id} → {domain}")
+    logger.info(f"[get_domain] user_id={user_id} domain='{domain}'")
     return {"graph_state": "have_domain", "domain": domain}
 
 def node_ask_resume(state: State) -> dict:
-    log("node2_ask_resume")
+    logger.debug("node_ask_resume")
     return {"graph_state": "ask_resume"}
 
 def get_resume_url(state: State) -> dict:
@@ -287,7 +284,7 @@ def get_resume_url(state: State) -> dict:
     Accepts resume as http/https, file://, or local path.
     Validates once and stores in state['resume_url'] (name kept for backward-compat).
     """
-    log("node get_resume_url")
+    logger.debug("node get_resume_url")
 
     # If the last user message *only* contains the source, great; else prompt.
     text = last_user_text(state)
@@ -302,22 +299,22 @@ def get_resume_url(state: State) -> dict:
     try:
         kind, normalized = _normalize_resume_input(resume_value)
     except Exception as e:
-        log(f"[get_resume_url] normalization error: {e} → continuing without resume")
+        logger.warning(f"[get_resume_url] normalization error: {e} → continuing without resume")
         return {"graph_state": "no_resume_url"}
 
     # Handle skip/empty
     if kind == "none" or not normalized:
-        log("[get_resume_url] user skipped providing a resume")
+        logger.info("[get_resume_url] user skipped providing a resume")
         return {"graph_state": "no_resume_url"}
 
     # For local/file paths, validate existence early
     if kind in {"file", "local"}:
         p = Path(normalized)
         if not p.exists():
-            log(f"[get_resume_url] local path not found: {p}")
+            logger.warning(f"[get_resume_url] local path not found: {p}")
             return {"graph_state": "no_resume_url"}
 
-    log(f"[get_resume_url] source kind={kind} value={normalized}")
+    logger.info(f"[get_resume_url] source kind={kind} value={normalized}")
     # keep the original key name to avoid touching downstream edges
     return {
         "graph_state": "have_resume_url",
@@ -333,8 +330,8 @@ def is_resume_url(state: State) -> Literal["resume_is_present", "resume_is_not_p
     return "resume_is_present" if has_source else "resume_is_not_present"
 
 def node_resume_ETL(state: State) -> dict:
-    log("node node_resume_ETL")
-    log(f"Extracting resume from source: {state.get('resume_url')}")
+    logger.debug("node_resume_ETL")
+    logger.info(f"[resume_ETL] source={state.get('resume_url')}")
     resume_etl = ResumeETL(user_id=state.get("user_id"), verbose=True)
     profile = resume_etl.run(resume_url_or_path=state.get("resume_url") or "")
     return {"graph_state": "node_resume_ETL", "profile": profile}
@@ -345,7 +342,7 @@ def update_profile(state: State) -> dict:
     - Persist profile deltas to RDB + VectorStore (lists merged in RDB).
     - Return a state patch with the chosen domain + ETL-derived fields.
     """
-    log("node update_profile")
+    logger.debug("node update_profile")
     user_id = state.get("user_id")
     etl_out = state.get("profile") or {}
     prof = etl_out.get("profile") or {}
@@ -368,7 +365,7 @@ def update_profile(state: State) -> dict:
             weaknesses=weaknesses or None,
         )
     except Exception as e:
-        log(f"[update_profile] RDB update failed: {e}")
+        logger.error(f"[update_profile] RDB update failed: {e}")
 
     try:
         vs.upsert_profile_snapshot(
@@ -380,7 +377,7 @@ def update_profile(state: State) -> dict:
             weaknesses=weaknesses or [],
         )
     except Exception as e:
-        log(f"[update_profile] Vector upsert failed: {e}")
+        logger.error(f"[update_profile] Vector upsert failed: {e}")
 
     return {
         "graph_state": "update_profile",
@@ -394,7 +391,7 @@ def update_profile(state: State) -> dict:
 # ----- interview loop -----
 
 def query_question(state: State) -> dict:
-    log("node query_question")
+    logger.debug("node query_question")
     user_id = state.get("user_id")
 
     # build a query using your router
@@ -428,7 +425,7 @@ def query_question(state: State) -> dict:
 
 
 def ask_question(state: State) -> dict:
-    log("node ask_question")
+    logger.debug("node ask_question")
 
     qtext = (state.get("question") or "").strip()
     if not qtext:
@@ -470,10 +467,10 @@ def validate_communication_clarity(state: State) -> Dict[str, Any]:
 
 def metrics_barrier(state: State) -> Dict[str, Any]:
     # Debug what keys we have each time the barrier runs
-    print("barrier keys:", list(state.keys()))
-    print("TA:", state.get("metric_technical_accuracy"))
-    print("RD:", state.get("metric_reasoning_depth"))
-    print("CC:", state.get("metric_communication_clarity"))
+    logger.debug("[metrics_barrier] keys=%s", list(state.keys()))
+    logger.debug("[metrics_barrier] TA=%s", state.get("metric_technical_accuracy"))
+    logger.debug("[metrics_barrier] RD=%s", state.get("metric_reasoning_depth"))
+    logger.debug("[metrics_barrier] CC=%s", state.get("metric_communication_clarity"))
     return {}  # no state change
 
 def metrics_barrier_decider(state: State) -> Literal["go", "wait"]:
@@ -536,12 +533,12 @@ def aggregate_feedback(state: State) -> Dict[str, Any]:
     }
 
 def get_answer(state: State) -> dict:
-    log("node get_answer")
+    logger.debug("node get_answer")
     # answer is already captured in ask_question
     return {"graph_state": "get_answer"}
 
 def update_profile_with_score(state: State) -> dict:
-    log("node update_profile_with_score")
+    logger.debug("node update_profile_with_score")
     user_id = state.get("user_id")
 
     # scores collected in previous step (calculate_score)
@@ -570,7 +567,7 @@ def update_profile_with_score(state: State) -> dict:
                     weaknesses=weaknesses or None,
                 )
             except Exception as e:
-                log(f"[update_profile_with_score] rdb.update_user_profile_partial failed: {e}")
+                logger.error(f"[update_profile_with_score] rdb.update_user_profile_partial failed: {e}")
 
             # Upsert a fresh vector snapshot including new strengths/weaknesses
             try:
@@ -583,17 +580,17 @@ def update_profile_with_score(state: State) -> dict:
                     weaknesses=weaknesses or [],
                 )
             except Exception as e:
-                log(f"[update_profile_with_score] vector upsert failed: {e}")
+                logger.error(f"[update_profile_with_score] vector upsert failed: {e}")
     except Exception as e:
-        log(f"[update_profile_with_score] merge strengths/weaknesses failed: {e}")
+        logger.error(f"[update_profile_with_score] merge strengths/weaknesses failed: {e}")
 
     return {"graph_state": "update_profile_with_score"}
 
 def update_strength_weakness(state: State) -> dict:
-    log("node update_strength_weakness")
+    logger.debug("node update_strength_weakness")
     user_id = state.get("user_id")
     if not user_id:
-        log("[update_strength_weakness] missing user_id → skip")
+        logger.warning("[update_strength_weakness] missing user_id → skip")
         return {"graph_state": "update_strength_weakness"}
 
     # Strengths and weaknesses may be empty
@@ -602,14 +599,14 @@ def update_strength_weakness(state: State) -> dict:
 
     # nothing to add → no-op
     if not new_strengths and not new_weaknesses:
-        log("[update_strength_weakness] no strengths/weaknesses to add → skip DB update")
+        logger.info("[update_strength_weakness] no strengths/weaknesses to add → skip DB update")
         return {"graph_state": "update_strength_weakness"}
 
     # fetch existing profile to *append* (not overwrite)
     try:
         profile = rdb.get_user_profile(user_id=user_id) or {}
     except Exception as e:
-        log(f"[update_strength_weakness] get_user_profile failed: {e}")
+        logger.error(f"[update_strength_weakness] get_user_profile failed: {e}")
         profile = {}
 
     existing_strengths = (profile.get("strengths") or [])
@@ -640,9 +637,9 @@ def update_strength_weakness(state: State) -> dict:
             strengths=merged_strengths if new_strengths else None,
             weaknesses=merged_weaknesses if new_weaknesses else None,
         )
-        log("[update_strength_weakness] DB updated")
+        logger.info("[update_strength_weakness] DB updated")
     except Exception as e:
-        log(f"[update_strength_weakness] update_user_profile_partial failed: {e}")
+        logger.error(f"[update_strength_weakness] update_user_profile_partial failed: {e}")
 
     # Mirror change into Vector DB snapshot as well (append semantics via full merged lists)
     try:
@@ -654,29 +651,29 @@ def update_strength_weakness(state: State) -> dict:
             strengths=merged_strengths,
             weaknesses=merged_weaknesses,
         )
-        log("[update_strength_weakness] Vector snapshot updated")
+        logger.info("[update_strength_weakness] Vector snapshot updated")
     except Exception as e:
-        log(f"[update_strength_weakness] vector upsert failed: {e}")
+        logger.error(f"[update_strength_weakness] vector upsert failed: {e}")
 
     return {"graph_state": "update_strength_weakness"}
 
 # ----- continue / exit routing -----
 def gate_should_continue(state: State) -> dict:
-    log("gate_should_continue")
+    logger.debug("gate_should_continue")
     return {"graph_state": "should_continue"}
 
 def route_should_continue(state: State) -> Literal["continue", "exit"]:
     # 1) explicit flag wins
     flag = (state.get("should_continue") or "").strip().lower()
     if flag in {"exit", "quit", "stop"}:
-        log("[route_should_continue] flag → EXIT")
+        logger.info("[route_should_continue] flag → EXIT")
         return "exit"
     # 2) infer from last user message
     msg = last_user_text(state).lower()
     if any(w in msg for w in ("exit", "quit", "stop")):
-        log(f"[route_should_continue] message '{msg}' → EXIT")
+        logger.info(f"[route_should_continue] message '{msg}' → EXIT")
         return "exit"
-    log("[route_should_continue] → CONTINUE")
+    logger.info("[route_should_continue] → CONTINUE")
     return "continue"
 
 # ------------------------------------------------------------------------------
@@ -821,5 +818,5 @@ def resume_thread(thread_id: str, value: Any) -> Dict[str, Any]:
 if __name__ == "__main__":
     tid = os.getenv("TEST_THREAD_ID") or "demo_1"
     uid = os.getenv("TEST_USER_ID") or  "test_user_009"
-    log(start_thread(tid, uid, strategy="scores").get("__interrupt__"))
-    log(resume_thread(tid, "Data Science").get("__interrupt__"))
+    logger.info(start_thread(tid, uid, strategy="scores").get("__interrupt__"))
+    logger.info(resume_thread(tid, "Data Science").get("__interrupt__"))
