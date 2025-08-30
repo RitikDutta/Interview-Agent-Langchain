@@ -1,6 +1,9 @@
 from dotenv import load_dotenv
 import time
 load_dotenv()
+import re
+from pathlib import Path
+from urllib.parse import urlparse, unquote
 
 from typing import TypedDict, Literal, List, Optional, Dict, Any
 from langchain_google_genai import ChatGoogleGenerativeAI
@@ -59,6 +62,9 @@ class State(TypedDict, total=False):
     domain: Optional[str]
     resume_url: Optional[str]
     strategy: Optional[str]
+    profile: Dict[str, Any]
+    skills: List[str]
+    summary: str
 
     # interview loop
     question: str
@@ -92,15 +98,15 @@ class OverallEval(BaseModel):
     strengths: Optional[List[str]] = Field(
         default=None,
         description=(
-            "OPTIONAL. 0–3 bullet-like strengths, each a short phrase (≤10 words). "
+            "OPTIONAL. in 1-2 words strengths"
             "Only include if clearly evidenced across the provided metrics; otherwise omit."
         ),
     )
     weaknesses: Optional[List[str]] = Field(
         default=None,
         description=(
-            "OPTIONAL. 0–3 bullet-like weaknesses/opportunities, short phrases (≤10 words). "
-            "Only include if clearly evidenced across the metrics; otherwise omit."
+            "OPTIONAL. in 1-2 words weaknesses."
+            "Only include if clearly evidenced across the provided metrics; otherwise omit."
         ),
     )
 
@@ -148,6 +154,32 @@ def last_user_text(state: State) -> str:
         if m.get("role") == "user":
             return (m.get("content") or "").strip()
     return (state.get("input_text") or "").strip()
+
+def _normalize_resume_input(value) -> tuple[str, str]:
+    """
+    Normalize user-provided resume input into (kind, normalized_string).
+    kind ∈ {"http", "file", "local", "none"}.
+    """
+    if isinstance(value, dict):
+        s = (value.get("url") or value.get("path") or value.get("content") or "").strip()
+    else:
+        s = str(value or "").strip()
+
+    if s.lower() in {"skip", "no", "later", ""}:
+        return ("none", "")
+
+    # http(s) URL
+    if s.lower().startswith(("http://", "https://")):
+        return ("http", s)
+
+    # file:// URL
+    if s.lower().startswith("file://"):
+        u = urlparse(s)
+        p = Path(unquote(u.path)).expanduser()
+        return ("file", str(p))
+
+    p = Path(s).expanduser()
+    return ("local", str(p))
 
 # ------------------------------------------------------------------------------
 # new/existing user routing
@@ -223,11 +255,6 @@ def get_domain(state: State) -> dict:
     """
     user_id = state.get("user_id")
     log("node get_domain")
-    # 1) already give a domain?
-    text = last_user_text(state)
-    if text:
-        log(f"[get_domain] found domain in message: {text}")
-        return {"graph_state": "have_domain", "domain": text}
 
     # 2) no domain
     domain_value = interrupt({
@@ -257,69 +284,118 @@ def node_ask_resume(state: State) -> dict:
 
 def get_resume_url(state: State) -> dict:
     """
-    If the latest user message already contains a URL, store it.
-    Otherwise, interrupt to ask for it and wait for a reply.
+    Accepts resume as http/https, file://, or local path.
+    Validates once and stores in state['resume_url'] (name kept for backward-compat).
     """
     log("node get_resume_url")
-    # 1) already give a URL?
-    text = last_user_text(state)
-    if text.startswith(("http://", "https://")):
-        log(f"[get_resume_url] found URL in message: {text}")
-        return {"graph_state": "have_resume_url", "resume_url": text}
 
-    # 2) no URL
-    resume_value = interrupt({
-        "prompt": "Please paste your resume URL (http/https). "
-                  "Type 'skip' to continue without a URL."
+    # If the last user message *only* contains the source, great; else prompt.
+    text = last_user_text(state)
+    resume_value = text if text else interrupt({
+        "prompt": (
+            "Please share your resume — you can paste a URL (http/https), a file:// URL, "
+            "or a local path (absolute/relative, ~ ok). Type 'skip' to continue without a resume."
+        )
     })
 
-    # 3) normalize the resume_value into a string
-    if isinstance(resume_value, dict):
-        # accept common shapes: {"url": ...} or {"content": ...}
-        url = resume_value.get("url") or resume_value.get("content") or ""
-    else:
-        url = str(resume_value or "")
-
-    url = url.strip()
-
-    # 4) handle skip or invalid
-    if url.lower() in {"skip", "no", "later", ""}:
-        log("[get_resume_url] user skipped providing URL")
-        return {"graph_state": "no_resume_url"}  # no resume_url key set
-
-    if not url.startswith(("http://", "https://")):
-        log(f"[get_resume_url] invalid URL provided: {url!r} (continuing without)")
+    # Normalize once
+    try:
+        kind, normalized = _normalize_resume_input(resume_value)
+    except Exception as e:
+        log(f"[get_resume_url] normalization error: {e} → continuing without resume")
         return {"graph_state": "no_resume_url"}
 
-    log(f"got URL from user: {state.get('user_id')} → {url}")
+    # Handle skip/empty
+    if kind == "none" or not normalized:
+        log("[get_resume_url] user skipped providing a resume")
+        return {"graph_state": "no_resume_url"}
 
-    return {"graph_state": "have_resume_url", "resume_url": url}
+    # For local/file paths, validate existence early
+    if kind in {"file", "local"}:
+        p = Path(normalized)
+        if not p.exists():
+            log(f"[get_resume_url] local path not found: {p}")
+            return {"graph_state": "no_resume_url"}
+
+    log(f"[get_resume_url] source kind={kind} value={normalized}")
+    # keep the original key name to avoid touching downstream edges
+    return {
+        "graph_state": "have_resume_url",
+        "resume_url": normalized,    # could be URL or local path
+    }
 
 # ----- Resume routing + pipeline -----
 def is_resume_url(state: State) -> Literal["resume_is_present", "resume_is_not_present"]:
-    # prefer the explicit field set by get_resume_url; fall back to last message
-    text = (state.get("resume_url") or last_user_text(state)).strip()
-    log(f"[is_resume_url] checking: {text!r}")
-    return "resume_is_present" if text.startswith(("http://", "https://")) else "resume_is_not_present"
+    """
+    checks whether get_resume_url already captured a usable source.
+    """
+    has_source = bool((state.get("resume_url") or "").strip())
+    return "resume_is_present" if has_source else "resume_is_not_present"
 
 def node_resume_ETL(state: State) -> dict:
     log("node node_resume_ETL")
-    log(f"Extracting resume from URL: {state.get('resume_url')}")
-    resume_etl = ResumeETL(
-        user_id=state.get("user_id"),
-        verbose=True,
-    )
-    return {"graph_state": "transform_resume"}
+    log(f"Extracting resume from source: {state.get('resume_url')}")
+    resume_etl = ResumeETL(user_id=state.get("user_id"), verbose=True)
+    profile = resume_etl.run(resume_url_or_path=state.get("resume_url") or "")
+    return {"graph_state": "node_resume_ETL", "profile": profile}
 
 def update_profile(state: State) -> dict:
+    """
+    - Choose domain: state['domain'] (user-provided) > resume_profile['domain'].
+    - Persist profile deltas to RDB + VectorStore (lists merged in RDB).
+    - Return a state patch with the chosen domain + ETL-derived fields.
+    """
     log("node update_profile")
-    return {"graph_state": "update_profile"}
+    user_id = state.get("user_id")
+    etl_out = state.get("profile") or {}
+    prof = etl_out.get("profile") or {}
+
+    # Prefer user's explicit domain set earlier in the flow
+    chosen_domain = (state.get("domain") or prof.get("domain") or None)
+
+    # Collect ETL-derived attributes (safe defaults)
+    skills = list(prof.get("technical_skills") or [])
+    strengths = list(prof.get("strengths") or [])
+    weaknesses = list(prof.get("weaknesses") or [])
+    summary = (prof.get("user_summary") or "").strip()
+
+    try:
+        rdb.update_user_profile_partial(
+            user_id=user_id,
+            domain=chosen_domain,                 # may be None (no-op)
+            skills=skills or None,                # only pass if we actually have values
+            strengths=strengths or None,
+            weaknesses=weaknesses or None,
+        )
+    except Exception as e:
+        log(f"[update_profile] RDB update failed: {e}")
+
+    try:
+        vs.upsert_profile_snapshot(
+            user_id=user_id,
+            domain=chosen_domain or "unknown",
+            summary=summary,
+            skills=skills or [],
+            strengths=strengths or [],
+            weaknesses=weaknesses or [],
+        )
+    except Exception as e:
+        log(f"[update_profile] Vector upsert failed: {e}")
+
+    return {
+        "graph_state": "update_profile",
+        "domain": chosen_domain,          # reflect the final choice in state
+        "skills": skills[:],              
+        "strengths": strengths[:],
+        "weaknesses": weaknesses[:],
+        "summary": summary,
+    }
 
 # ----- interview loop -----
 
 def query_question(state: State) -> dict:
     log("node query_question")
-    user_id = state.get("user_id") or "test_user_004"
+    user_id = state.get("user_id")
 
     # build a query using your router
     plan = question_router.plan(user_id, strategy=state.get('strategy'))
@@ -417,21 +493,46 @@ def aggregate_feedback(state: State) -> Dict[str, Any]:
     combined = int(round((s_ta + s_rd + s_cc) / 3))  # single source of truth
 
     sys = SystemMessage(content=(
-        "You are a senior interview evaluator. Write ONE overall feedback (≤100 words) "
-        "based strictly on the three metric feedback snippets. No headings, no repetition."
+        "You are a senior interview evaluator. Based strictly on the three metric feedback snippets and scores, "
+        "return a structured overall evaluation. Keep overall_feedback ≤100 words, no headings or repetition. "
+        "Include strengths/weaknesses ONLY if clearly evidenced; at most 0–3 concise bullet-like phrases each. "
+        "Use the provided combined average score below as the combined_score (integer 0–10)."
     ))
     human = HumanMessage(content=(
-        f"Technical accuracy: {m_ta['feedback']}\n"
-        f"Reasoning depth: {m_rd['feedback']}\n"
-        f"Communication clarity: {m_cc['feedback']}\n"
+        f"Technical accuracy: score={s_ta}, feedback={m_ta['feedback']}\n"
+        f"Reasoning depth: score={s_rd}, feedback={m_rd['feedback']}\n"
+        f"Communication clarity: score={s_cc}, feedback={m_cc['feedback']}\n"
+        f"Combined average score (given): {combined}"
     ))
-    text_only = llm.with_config({"temperature": 0.2}).invoke([sys, human]).content.strip()
+
+    overall: OverallEval = llm_overall.with_config({"temperature": 0.2}).invoke([sys, human])
+
+    # Merge strengths/weaknesses into state without duplicates, preserving order
+    def _merge(old_list, add_list):
+        seen = set()
+        merged = []
+        for x in (old_list or []):
+            key = (x or "").strip().lower()
+            if not key or key in seen:
+                continue
+            seen.add(key)
+            merged.append(x)
+        for x in (add_list or []):
+            key = (x or "").strip().lower()
+            if not key or key in seen:
+                continue
+            seen.add(key)
+            merged.append(x)
+        return merged
+
+    strengths_merged = _merge(state.get("strengths") or [], overall.strengths or [])
+    weaknesses_merged = _merge(state.get("weaknesses") or [], overall.weaknesses or [])
 
     return {
-        "overall_feedback_summary": text_only,
+        "overall_feedback_summary": overall.overall_feedback.strip(),
         "combined_score": combined,
-        "strengths": state.get("strengths") or [],
-        "weaknesses": state.get("weaknesses") or [],
+        "strengths": strengths_merged,
+        "weaknesses": weaknesses_merged,
     }
 
 def get_answer(state: State) -> dict:
@@ -455,6 +556,37 @@ def update_profile_with_score(state: State) -> dict:
     }
     set_score.update_and_save(user_id, scores)
 
+    # Also persist strengths/weaknesses gathered during aggregation to both DBs
+    try:
+        strengths = (state.get("strengths") or [])[:]
+        weaknesses = (state.get("weaknesses") or [])[:]
+
+        if strengths or weaknesses:
+            # Append/merge in relational DB
+            try:
+                rdb.update_user_profile_partial(
+                    user_id=user_id,
+                    strengths=strengths or None,
+                    weaknesses=weaknesses or None,
+                )
+            except Exception as e:
+                log(f"[update_profile_with_score] rdb.update_user_profile_partial failed: {e}")
+
+            # Upsert a fresh vector snapshot including new strengths/weaknesses
+            try:
+                vs.upsert_profile_snapshot(
+                    user_id=user_id,
+                    domain=state.get("domain") or "unknown",
+                    summary=state.get("summary") or "",
+                    skills=state.get("skills") or [],
+                    strengths=strengths or [],
+                    weaknesses=weaknesses or [],
+                )
+            except Exception as e:
+                log(f"[update_profile_with_score] vector upsert failed: {e}")
+    except Exception as e:
+        log(f"[update_profile_with_score] merge strengths/weaknesses failed: {e}")
+
     return {"graph_state": "update_profile_with_score"}
 
 def update_strength_weakness(state: State) -> dict:
@@ -464,7 +596,7 @@ def update_strength_weakness(state: State) -> dict:
         log("[update_strength_weakness] missing user_id → skip")
         return {"graph_state": "update_strength_weakness"}
 
-    # strengths/weaknesses from LLM optional can be empty
+    # Strengths and weaknesses may be empty
     new_strengths = (state.get("strengths") or [])[:]
     new_weaknesses = (state.get("weaknesses") or [])[:]
 
@@ -512,6 +644,20 @@ def update_strength_weakness(state: State) -> dict:
     except Exception as e:
         log(f"[update_strength_weakness] update_user_profile_partial failed: {e}")
 
+    # Mirror change into Vector DB snapshot as well (append semantics via full merged lists)
+    try:
+        vs.upsert_profile_snapshot(
+            user_id=user_id,
+            domain=state.get("domain") or "unknown",
+            summary=state.get("summary") or "",
+            skills=state.get("skills") or [],
+            strengths=merged_strengths,
+            weaknesses=merged_weaknesses,
+        )
+        log("[update_strength_weakness] Vector snapshot updated")
+    except Exception as e:
+        log(f"[update_strength_weakness] vector upsert failed: {e}")
+
     return {"graph_state": "update_strength_weakness"}
 
 # ----- continue / exit routing -----
@@ -534,111 +680,146 @@ def route_should_continue(state: State) -> Literal["continue", "exit"]:
     return "continue"
 
 # ------------------------------------------------------------------------------
-# Build Graph
+# Build Graph (lazy singleton) + helpers for UI/Flask
 # ------------------------------------------------------------------------------
-builder = StateGraph(State)
-
-builder.add_node("gate_is_new_user", gate_is_new_user)
-builder.add_node("init_user", init_user)
-builder.add_node("ask_domain", node_ask_domain)
-builder.add_node("get_domain", get_domain)
-builder.add_node("ask_resume", node_ask_resume)
-builder.add_node("get_resume_url", get_resume_url)
-
-builder.add_node("node_resume_ETL", node_resume_ETL)
-builder.add_node("update_profile", update_profile)
-
-builder.add_node("query_question", query_question)
-builder.add_node("ask_question", ask_question)
-builder.add_node("get_answer", get_answer)
-
-builder.add_node("validate_technical_accuracy", validate_technical_accuracy)
-builder.add_node("validate_reasoning_depth", validate_reasoning_depth)
-builder.add_node("validate_communication_clarity", validate_communication_clarity)
-builder.add_node("metrics_barrier", metrics_barrier)
-
-builder.add_node("aggregate_feedback", aggregate_feedback)
-
-builder.add_node("update_profile_with_score", update_profile_with_score)
-builder.add_node("update_strength_weakness", update_strength_weakness)
-builder.add_node("gate_should_continue", gate_should_continue)
-
-# Start → new/existing
-builder.add_edge(START, "gate_is_new_user")
-builder.add_conditional_edges(
-    "gate_is_new_user",
-    route_is_new_user,
-    {"new_user": "init_user", "existing_user": "query_question"},
-)
-# New user initialization
-builder.add_edge("init_user", "ask_domain")
-
-# Domain → Resume
-builder.add_edge("ask_domain", "get_domain")
-builder.add_edge("get_domain", "ask_resume")
-builder.add_edge("ask_resume", "get_resume_url")
-
-# Route based on URL presence (after get_resume_url)
-builder.add_conditional_edges(
-    "get_resume_url",
-    is_resume_url,
-    {"resume_is_present": "node_resume_ETL", "resume_is_not_present": "update_profile"},
-)
-
-# Resume processing
-builder.add_edge("node_resume_ETL", "update_profile")
-
-# Interview loop
-builder.add_edge("update_profile", "query_question")
-builder.add_edge("query_question", "ask_question")
-builder.add_edge("ask_question", "get_answer")
-
-builder.add_edge("get_answer", "validate_technical_accuracy")
-builder.add_edge("get_answer", "validate_reasoning_depth")
-builder.add_edge("get_answer", "validate_communication_clarity")
-
-builder.add_edge("validate_technical_accuracy", "metrics_barrier")
-builder.add_edge("validate_reasoning_depth", "metrics_barrier")
-builder.add_edge("validate_communication_clarity", "metrics_barrier")
-
-builder.add_conditional_edges(
-    "metrics_barrier",
-    metrics_barrier_decider,
-    {"go": "aggregate_feedback", "wait": END},
-)
-
-# After aggregation, continue as before
-builder.add_edge("aggregate_feedback", "update_strength_weakness")
-builder.add_edge("update_strength_weakness", "update_profile_with_score")
-
-# builder.add_edge("update_profile_with_score", "give_feedback")
-
-# continue / Exit
-builder.add_edge("update_profile_with_score", "gate_should_continue")
-builder.add_conditional_edges(
-    "gate_should_continue",
-    route_should_continue,
-    {"continue": "query_question", "exit": END},
-)
-
-# compile with a checkpointer so interrupts can pause/resume
-checkpointer = InMemorySaver()
-graph = builder.compile(checkpointer=checkpointer)
-
-thread = {"configurable": {"thread_id": "demo-1"}}
-out = graph.invoke(
-        { "user_id": "test_user_004", "is_new_user": (rdb.user_exists_rdb(user_id="123")), "messages": [{"role": "user"}], "should_continue": "exit", "strategy": "scores"},
-    config=thread
-)
+_GRAPH_SINGLETON = None
+_CHECKPOINTER_SINGLETON = None
 
 
+def _wire_graph(builder: StateGraph):
+    builder.add_node("gate_is_new_user", gate_is_new_user)
+    builder.add_node("init_user", init_user)
+    builder.add_node("ask_domain", node_ask_domain)
+    builder.add_node("get_domain", get_domain)
+    builder.add_node("ask_resume", node_ask_resume)
+    builder.add_node("get_resume_url", get_resume_url)
 
-log(out.get("__interrupt__"))
-out = graph.invoke(Command(resume="Data Science"), config=thread)
+    builder.add_node("node_resume_ETL", node_resume_ETL)
+    builder.add_node("update_profile", update_profile)
 
-log(out.get("__interrupt__"))
-out = graph.invoke(Command(resume="/home/codered/mystuff/progs/python/interview-mentor-Langraph/Ritik Dutta Resume-June.pdf"), config=thread)
+    builder.add_node("query_question", query_question)
+    builder.add_node("ask_question", ask_question)
+    builder.add_node("get_answer", get_answer)
 
-answer = "For model testing, common techniques include train/test split, cross-validation (like k-fold or stratified), and bootstrapping to evaluate performance reliability. Sometimes a hold-out validation set or A/B testing in production is used. Models are also subjected to robustness or stress testing with noisy or adversarial data, followed by error analysis to understand misclassifications and improve performance."
-log(out.get("__interrupt__"))
-out = graph.invoke(Command(resume=answer), config=thread)
+    builder.add_node("validate_technical_accuracy", validate_technical_accuracy)
+    builder.add_node("validate_reasoning_depth", validate_reasoning_depth)
+    builder.add_node("validate_communication_clarity", validate_communication_clarity)
+    builder.add_node("metrics_barrier", metrics_barrier)
+
+    builder.add_node("aggregate_feedback", aggregate_feedback)
+
+    builder.add_node("update_profile_with_score", update_profile_with_score)
+    builder.add_node("update_strength_weakness", update_strength_weakness)
+    builder.add_node("gate_should_continue", gate_should_continue)
+
+    # Start → new/existing
+    builder.add_edge(START, "gate_is_new_user")
+    builder.add_conditional_edges(
+        "gate_is_new_user",
+        route_is_new_user,
+        {"new_user": "init_user", "existing_user": "query_question"},
+    )
+    # New user initialization
+    builder.add_edge("init_user", "ask_domain")
+
+    # Domain → Resume
+    builder.add_edge("ask_domain", "get_domain")
+    builder.add_edge("get_domain", "ask_resume")
+    builder.add_edge("ask_resume", "get_resume_url")
+
+    # Route based on URL presence (after get_resume_url)
+    builder.add_conditional_edges(
+        "get_resume_url",
+        is_resume_url,
+        {"resume_is_present": "node_resume_ETL", "resume_is_not_present": "update_profile"},
+    )
+
+    # Resume processing
+    builder.add_edge("node_resume_ETL", "update_profile")
+
+    # Interview loop
+    builder.add_edge("update_profile", "query_question")
+    builder.add_edge("query_question", "ask_question")
+    builder.add_edge("ask_question", "get_answer")
+
+    builder.add_edge("get_answer", "validate_technical_accuracy")
+    builder.add_edge("get_answer", "validate_reasoning_depth")
+    builder.add_edge("get_answer", "validate_communication_clarity")
+
+    builder.add_edge("validate_technical_accuracy", "metrics_barrier")
+    builder.add_edge("validate_reasoning_depth", "metrics_barrier")
+    builder.add_edge("validate_communication_clarity", "metrics_barrier")
+
+    builder.add_conditional_edges(
+        "metrics_barrier",
+        metrics_barrier_decider,
+        {"go": "aggregate_feedback", "wait": END},
+    )
+
+    # After aggregation, continue as before
+    builder.add_edge("aggregate_feedback", "update_strength_weakness")
+    builder.add_edge("update_strength_weakness", "update_profile_with_score")
+
+    # continue / Exit
+    builder.add_edge("update_profile_with_score", "gate_should_continue")
+    builder.add_conditional_edges(
+        "gate_should_continue",
+        route_should_continue,
+        {"continue": "query_question", "exit": END},
+    )
+
+
+def get_graph():
+    global _GRAPH_SINGLETON, _CHECKPOINTER_SINGLETON
+    if _GRAPH_SINGLETON is not None:
+        return _GRAPH_SINGLETON
+    builder = StateGraph(State)
+    _wire_graph(builder)
+    _CHECKPOINTER_SINGLETON = InMemorySaver()
+    _GRAPH_SINGLETON = builder.compile(checkpointer=_CHECKPOINTER_SINGLETON)
+    return _GRAPH_SINGLETON
+
+
+def get_thread_config(thread_id: str) -> Dict[str, Any]:
+    return {"configurable": {"thread_id": thread_id}}
+
+
+def get_current_state(thread_id: str) -> Dict[str, Any]:
+    g = get_graph()
+    snap = g.get_state(get_thread_config(thread_id))
+    try:
+        return dict(snap.values or {})
+    except Exception:
+        return dict(snap or {})
+
+
+def start_thread(thread_id: str, user_id: str, strategy: Optional[str] = None) -> Dict[str, Any]:
+    g = get_graph()
+    exists = False
+    try:
+        exists = rdb.user_exists_rdb(user_id=user_id)
+    except Exception:
+        pass
+    init_state: Dict[str, Any] = {
+        "user_id": user_id,
+        "is_new_user": (not exists),
+        "messages": [{"role": "user", "content": "start"}],
+        "should_continue": "exit",
+    }
+    if strategy:
+        init_state["strategy"] = strategy
+    out = g.invoke(init_state, config=get_thread_config(thread_id))
+    return out if isinstance(out, dict) else {}
+
+
+def resume_thread(thread_id: str, value: Any) -> Dict[str, Any]:
+    g = get_graph()
+    out = g.invoke(Command(resume=value), config=get_thread_config(thread_id))
+    return out if isinstance(out, dict) else {}
+
+
+if __name__ == "__main__":
+    tid = os.getenv("TEST_THREAD_ID") or "demo_1"
+    uid = os.getenv("TEST_USER_ID") or  "test_user_009"
+    log(start_thread(tid, uid, strategy="scores").get("__interrupt__"))
+    log(resume_thread(tid, "Data Science").get("__interrupt__"))
