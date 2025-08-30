@@ -1,0 +1,324 @@
+# resume_etl.py
+from __future__ import annotations
+import os, tempfile, shutil, requests, json, logging, re
+from pathlib import Path
+from urllib.parse import urlparse, unquote
+
+from typing import Optional, List, Dict, Any, Tuple
+from pydantic import BaseModel, Field
+from dotenv import load_dotenv
+
+from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_community.document_loaders import PyPDFLoader
+try:
+    from langchain_community.document_loaders import PyMuPDFLoader
+    HAS_PYMUPDF = True
+except Exception:
+    HAS_PYMUPDF = False
+
+from relational_database import RelationalDB
+from vector_store import VectorStore
+
+from canonical_normalizer import (
+    search_domains_first,
+    search_skills_first,
+    search_domains_batch_first,
+    search_skills_batch_first,
+)
+
+# ------------ logging ------------
+LOG_LEVEL = os.getenv("RESUME_ETL_LOG_LEVEL", "INFO").upper()
+logging.basicConfig(
+    level=LOG_LEVEL,
+    format="%(asctime)s | %(levelname)s | %(name)s | %(message)s"
+)
+log = logging.getLogger("resume_etl")
+
+load_dotenv()
+
+# ---------- Transform target schema ----------
+class InterviewProfile(BaseModel):
+    user_name: str = Field(description="Name of the user")
+    domain: str = Field(
+        description=(
+            "The primary domain of expertise (snake_case). "
+            "Example: data_science, software_engineering."
+        )
+    )
+    strengths: List[str] = Field(default_factory=list)
+    weaknesses: List[str] = Field(default_factory=list)
+    technical_skills: List[str] = Field(default_factory=list)  # snake_case expected
+    project_experience: List[str] = Field(default_factory=list)
+    personality_traits: List[str] = Field(default_factory=list)
+    user_summary: str = Field(default="")
+
+# ---------- helpers ----------
+_SNAKE_RE_1 = re.compile(r"[^A-Za-z0-9]+")
+_SNAKE_RE_2 = re.compile(r"_+")
+
+def to_snake_lower(s: str) -> str:
+    s = _SNAKE_RE_1.sub("_", (s or "").strip())
+    s = _SNAKE_RE_2.sub("_", s).strip("_")
+    return s.lower()
+
+
+class ResumeETL:
+    """
+    Minimal ETL (no LangGraph) with canonical normalization via canonical_normalizer.py
+    - Uses search_*_first (single) and search_*_batch_first (batch) helpers
+    - Standardizes skills/domains to canonical names
+    - Builds a `categories` list from matched results
+    """
+
+    def __init__(
+        self,
+        user_id: str,
+        user_name_hint: Optional[str] = None,
+        gemini_model: str = "gemini-2.5-flash",
+        max_pages: int = 3,
+        page_joiner: str = "\n\n--- PAGE BREAK ---\n\n",
+        rdb: Optional[RelationalDB] = None,
+        vdb: Optional[VectorStore] = None,
+        verbose: bool = False,
+    ):
+        self.user_id = user_id
+        self.user_name_hint = user_name_hint or ""
+        self.max_pages = max_pages
+        self.page_joiner = page_joiner
+        self.verbose = verbose
+
+        self.llm = ChatGoogleGenerativeAI(model=gemini_model)
+        self.structured_llm = self.llm.with_structured_output(InterviewProfile)
+
+        self.rdb = rdb or RelationalDB()
+        self.vdb = vdb or VectorStore()
+
+    # -------- Extract --------
+    def _resolve_to_local_path(self, resume_url_or_path: str) -> tuple[str, str | None]:
+        """
+        Return (local_path, tmp_dir). If we download a remote file, tmp_dir is the folder to later cleanup.
+        Supports:
+        - http(s) URLs (downloads to temp)
+        - file:// URLs (no download)
+        - plain local paths (relative/absolute, ~ expanded)
+        """
+        src = (resume_url_or_path or "").strip()
+        if not src:
+            raise ValueError("Empty resume path/URL")
+
+        # file:// URL
+        if src.lower().startswith("file://"):
+            url = urlparse(src)
+            # On *nix: url.path holds the path; decode %XX and tilde if any
+            p = Path(unquote(url.path)).expanduser()
+            if not p.exists():
+                raise FileNotFoundError(f"file:// path not found: {p}")
+            return str(p), None
+
+        # http(s) URL → download to temp
+        if src.lower().startswith(("http://", "https://")):
+            tmp_dir = tempfile.mkdtemp(prefix="resume_etl_")
+            local_path = os.path.join(tmp_dir, "resume.pdf")
+            log.info(f"[extract] downloading resume from URL -> {src}")
+            with requests.get(src, stream=True, timeout=60) as r:
+                r.raise_for_status()
+                # (optional) light sanity: prefer pdf content-types
+                ctype = (r.headers.get("Content-Type") or "").lower()
+                if "pdf" not in ctype and not src.lower().endswith(".pdf"):
+                    log.warning(f"[extract] Content-Type looks non-PDF: {ctype!r}. Proceeding anyway.")
+                with open(local_path, "wb") as f:
+                    for chunk in r.iter_content(8192):
+                        if chunk:
+                            f.write(chunk)
+            log.info(f"[extract] saved to {local_path}")
+            return local_path, tmp_dir
+
+        # Plain local path
+        p = Path(src).expanduser().resolve()
+        if not p.exists():
+            raise FileNotFoundError(f"Local resume path not found: {p}")
+        return str(p), None
+
+
+    def extract(self, resume_url_or_path: str) -> Dict[str, Any]:
+        """
+        Accepts:
+        - http(s) URLs (downloaded to temp)
+        - file:// URLs
+        - local filesystem paths
+        Returns: {"raw_text": str, "pages_used": int}
+        """
+        tmp_dir = None
+        try:
+            local_path, tmp_dir = self._resolve_to_local_path(resume_url_or_path)
+
+            pages = []
+            try:
+                # Primary: PyPDFLoader
+                for i, d in enumerate(PyPDFLoader(local_path).load()):
+                    if i >= self.max_pages:
+                        break
+                    pages.append((d.page_content or "").strip())
+                log.info(f"[extract] PyPDFLoader OK, pages captured={len(pages)}")
+            except Exception as e_pdf:
+                # Fallback: PyMuPDFLoader if available
+                if HAS_PYMUPDF:
+                    docs = PyMuPDFLoader(local_path).load()
+                    for i, d in enumerate(docs[: self.max_pages]):
+                        pages.append((d.page_content or "").strip())
+                    log.warning(
+                        f"[extract] fallback PyMuPDFLoader OK, pages captured={len(pages)}; err={e_pdf}"
+                    )
+                else:
+                    raise RuntimeError(f"PDF extraction failed and PyMuPDF not available: {e_pdf}") from e_pdf
+
+            raw_text = self.page_joiner.join([p for p in pages if p])
+            if not raw_text.strip():
+                raise RuntimeError("No text extracted from resume")
+
+            return {"raw_text": raw_text, "pages_used": len(pages)}
+
+        finally:
+            if tmp_dir and os.path.isdir(tmp_dir):
+                shutil.rmtree(tmp_dir, ignore_errors=True)
+
+    # -------- Transform --------
+    def transform(self, raw_text: str, pages_used: int) -> Dict[str, Any]:
+        system_nudge = (
+            "Extract a structured interview profile from the resume text. "
+            "Be concise; if a field is missing, return an empty list/string. "
+            "Use short bullet nouns for lists. "
+            "Also write a short summary of the user in user_summary."
+        )
+        prompt = (
+            f"{system_nudge}\n\n"
+            f"Optional name hint: {self.user_name_hint}\n"
+            f"=== RESUME EXCERPT (first {pages_used} pages) ===\n{raw_text}\n"
+        )
+        log.info("[transform] invoking structured LLM…")
+        prof: InterviewProfile = self.structured_llm.invoke(prompt)
+
+        # Show raw structured output before normalization
+        print("\n==== PROFILE (raw LLM) ====\n" +
+              json.dumps(prof.model_dump(), indent=2, ensure_ascii=False) +
+              "\n==========================\n")
+
+        # -------- Canonical normalization via your helpers --------
+        # Domain (single)
+        dom_key = to_snake_lower(prof.domain)
+        dom_hit = search_domains_first(dom_key)  # Optional[dict]
+        dom_canon = dom_hit.get("canonical") if dom_hit else prof.domain
+        dom_cat = dom_hit.get("category") if dom_hit else None
+
+        # Skills (batch) — convert to snake first as your normalizer expects
+        skill_keys = [to_snake_lower(s) for s in (prof.technical_skills or [])]
+        # search_skills_batch_first should return a list of Optional[dict] aligned to labels
+        hits = search_skills_batch_first(skill_keys) if skill_keys else []
+        skills_canon: List[str] = []
+        misses: List[str] = []
+        skill_cats: set[str] = set()
+
+        for i, raw_lab in enumerate(skill_keys):
+            h = hits[i] if i < len(hits) else None
+            if h:
+                skills_canon.append(h.get("canonical", raw_lab))
+                if h.get("category"):
+                    skill_cats.add(h["category"])
+            else:
+                # keep original (pre-normalized label from LLM), but record miss
+                original = (prof.technical_skills or [])[i] if i < len(prof.technical_skills or []) else raw_lab
+                skills_canon.append(original)
+                misses.append(original)
+
+        # Aggregate categories (unique) from domain + skills
+        categories: List[str] = []
+        seen = set()
+        if dom_cat:
+            seen.add(dom_cat); categories.append(dom_cat)
+        for c in sorted(skill_cats):
+            if c not in seen:
+                seen.add(c); categories.append(c)
+
+        # Build normalized payload
+        normalized = {
+            "user_name": prof.user_name,
+            "domain": dom_canon,                 # canonical domain
+            "technical_skills": sorted(set(skills_canon), key=str.lower),
+            "strengths": prof.strengths,
+            "weaknesses": prof.weaknesses,
+            "project_experience": prof.project_experience,
+            "personality_traits": prof.personality_traits,
+            "user_summary": prof.user_summary,
+            "categories": categories,
+            "_normalize_debug": {
+                "domain_raw": prof.domain,
+                "skills_raw": prof.technical_skills,
+                "unmatched_skills": misses,
+            }
+        }
+
+        print("\n==== PROFILE (standardized) ====\n" +
+              json.dumps(normalized, indent=2, ensure_ascii=False) +
+              "\n================================\n")
+
+        return normalized
+
+    # -------- Load --------
+    def load(self, normalized: Dict[str, Any], pages_used: int = 1) -> Dict[str, Any]:
+        log.info("[load] ensuring tables…")
+        self.rdb.create_tables()  # ensures 'categories' column exists
+
+        log.info("[load] upsert users row in MySQL…")
+        self.rdb.upsert_user(
+            user_id=self.user_id,
+            name=normalized["user_name"] or None,
+            domain=normalized["domain"] or None,
+            skills=normalized["technical_skills"],
+            strengths=normalized["strengths"],
+            weaknesses=normalized["weaknesses"],
+            categories=normalized.get("categories", []),
+        )
+
+        log.info("[load] ensure academic_summary row…")
+        self.rdb.ensure_academic_summary(self.user_id)
+
+        # Vector DB
+        log.info("[load] upsert profile snapshot vector…")
+        vec_id = self.vdb.upsert_profile_snapshot(
+            user_id=self.user_id,
+            domain=normalized["domain"],
+            summary=normalized["user_summary"],
+            skills=normalized["technical_skills"],
+            strengths=normalized["strengths"],
+            weaknesses=normalized["weaknesses"],
+            categories=normalized.get("categories", []),
+        )
+
+        result = {
+            "user_id": self.user_id,
+            "vector_id": vec_id,
+            "namespace": self.vdb.namespace,
+            "pages_used": pages_used,
+        }
+        print("\n==== LOAD RESULT ====\n" + json.dumps(result, indent=2) + "\n=====================\n")
+        log.info("[load] done")
+        return result
+
+    # -------- Orchestrate --------
+    def run(self, resume_url_or_path: str) -> Dict[str, Any]:
+        log.info(f"[run] start ETL for user_id={self.user_id}")
+        ex = self.extract(resume_url_or_path)
+        log.info(f"[run] extracted pages={ex['pages_used']}")
+        normalized = self.transform(ex["raw_text"], ex["pages_used"])
+        load_res = self.load(normalized, ex["pages_used"])
+        log.info("[run] ETL complete")
+        return {"profile": normalized, "load_result": load_res}
+
+
+if __name__ == "__main__":
+    etl = ResumeETL(
+        user_id="test_user_004",
+        user_name_hint="Ritik",
+        verbose=True,
+    )
+    etl.run("/home/codered/mystuff/progs/python/interview-mentor-Langraph/Ritik Dutta Resume-June.pdf")
