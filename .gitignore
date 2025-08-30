@@ -12,3 +12,9 @@ test_upload.py
 database/__pycache__/
 .venv/
 .ipynb_checkpoints/
+redundant_files/
+templates/home.html
+experiments/
+docs/Ritik Dutta Resume-June.pdf
+questionbank/data_science_2.pdf
+questionbank/data_science.pdf
