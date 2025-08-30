@@ -5,6 +5,7 @@ from datetime import datetime
 from typing import Any, Dict, Optional
 
 from flask import Flask, jsonify, render_template, render_template_string, request
+from log_utils import get_logger
 
 # Imports
 from relational_database import RelationalDB
@@ -16,6 +17,7 @@ from concept_agent_architecture_test import (
 )
 
 app = Flask(__name__)
+logger = get_logger("monitor")
 
 # Create clients. Requires env vars.
 rdb = RelationalDB()
@@ -85,6 +87,7 @@ def fetch_all(user_id: str) -> Dict[str, Any]:
 # -----------------------------------------------------------------------------
 @app.get("/monitor/api/<user_id>.json")
 def api_monitor(user_id: str):
+    logger.info(f"GET /monitor/api/{user_id}.json")
     return jsonify(fetch_all(user_id))
 
 # -----------------------------------------------------------------------------
@@ -315,6 +318,7 @@ _PAGE = r"""
 
 @app.get("/monitor/<user_id>")
 def monitor(user_id: str):
+    logger.info(f"GET /monitor/{user_id}")
     data = fetch_all(user_id)
     return render_template("monitor.html", data=data)
 
@@ -325,6 +329,7 @@ def monitor(user_id: str):
 @app.post("/monitor/state/<user_id>")
 def post_state(user_id: str):
     payload = request.get_json(silent=True) or {}
+    logger.debug(f"POST /monitor/state/{user_id} keys={list(payload.keys())}")
     set_state_snapshot(user_id, payload)
     return jsonify({"ok": True, "user_id": user_id, "keys": list(payload.keys())})
 
@@ -337,6 +342,7 @@ def graph_start(user_id: str):
     body = request.get_json(silent=True) or {}
     thread_id = request.args.get("thread_id") or body.get("thread_id") or user_id
     strategy = body.get("strategy") or "scores"
+    logger.info(f"POST /monitor/graph/{user_id}/start thread_id={thread_id} strategy={strategy}")
     out = start_thread(thread_id=thread_id, user_id=user_id, strategy=strategy)
     state = get_current_state(thread_id)
     set_state_snapshot(user_id, state)
@@ -353,6 +359,7 @@ def graph_resume(user_id: str):
     body = request.get_json(silent=True) or {}
     thread_id = request.args.get("thread_id") or body.get("thread_id") or user_id
     value = body.get("value") if "value" in body else (body.get("content") or body)
+    logger.info(f"POST /monitor/graph/{user_id}/resume thread_id={thread_id}")
     out = resume_thread(thread_id=thread_id, value=value)
     state = get_current_state(thread_id)
     set_state_snapshot(user_id, state)

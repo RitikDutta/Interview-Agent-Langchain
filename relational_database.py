@@ -2,6 +2,7 @@
 
 import os
 import json
+from log_utils import get_logger
 from typing import Optional, List, Dict, Any
 
 import mysql.connector
@@ -17,6 +18,7 @@ def _j(val) -> str:
 
 class RelationalDB:
     def __init__(self, pool_size: int = 5):
+        self.logger = get_logger("rdbms")
         host = os.getenv("MYSQL_HOST")
         user = os.getenv("MYSQL_USER")
         password = os.getenv("MYSQL_PASSWORD")
@@ -92,21 +94,21 @@ class RelationalDB:
             if not cur.fetchone():
                 try:
                     cur.execute("ALTER TABLE users ADD COLUMN categories TEXT;")
-                    print("[rdbms] users: added missing 'categories' column")
+                    self.logger.info("users: added missing 'categories' column")
                 except Exception as e:
-                    print(f"[rdbms] warn: could not add 'categories' column ({e})")
+                    self.logger.warning(f"users: could not add 'categories' column ({e})")
 
             # Backward-compat: add thread_id if missing
             cur.execute("SHOW COLUMNS FROM users LIKE 'thread_id';")
             if not cur.fetchone():
                 try:
                     cur.execute("ALTER TABLE users ADD COLUMN thread_id VARCHAR(255);")
-                    print("[rdbms] users: added missing 'thread_id' column")
+                    self.logger.info("users: added missing 'thread_id' column")
                 except Exception as e:
-                    print(f"[rdbms] warn: could not add 'thread_id' column ({e})")
+                    self.logger.warning(f"users: could not add 'thread_id' column ({e})")
 
             conn.commit()
-            print("[rdbms] tables ensured: users, academic_summary")
+            self.logger.info("tables ensured: users, academic_summary")
         finally:
             cur.close()
             conn.close()
@@ -152,7 +154,7 @@ class RelationalDB:
                     ),
                 )
             conn.commit()
-            print(f"[rdbms] users upsert OK  user_id={user_id}")
+            self.logger.info(f"users upsert OK  user_id={user_id}")
         finally:
             conn.close()
 
@@ -168,7 +170,7 @@ class RelationalDB:
             with conn.cursor() as cur:
                 cur.execute(sql, (user_id,))
             conn.commit()
-            print(f"[rdbms] academic_summary ensured  user_id={user_id}")
+            self.logger.info(f"academic_summary ensured  user_id={user_id}")
         finally:
             conn.close()
 
@@ -232,7 +234,7 @@ class RelationalDB:
                     ),
                 )
             conn.commit()
-            print(f"[rdbms] users partial update OK  user_id={user_id} domain={new_domain} thread_id={new_thread_id}")
+            self.logger.info(f"users partial update OK  user_id={user_id} domain={new_domain} thread_id={new_thread_id}")
         finally:
             conn.close()
 
@@ -243,7 +245,7 @@ class RelationalDB:
             with conn.cursor() as cur:
                 cur.execute(sql, (thread_id, user_id))
             conn.commit()
-            print(f"[rdbms] thread_id set  user_id={user_id} thread_id={thread_id}")
+            self.logger.info(f"thread_id set  user_id={user_id} thread_id={thread_id}")
         finally:
             conn.close()
 
@@ -260,7 +262,7 @@ class RelationalDB:
                 cur.execute(sql, (user_id,))
                 row = cur.fetchone()
             if not row:
-                print(f"[rdbms] get_user_profile: not found user_id={user_id}")
+                self.logger.debug(f"get_user_profile: not found user_id={user_id}")
                 return None
 
             def _parse(v):
@@ -280,7 +282,7 @@ class RelationalDB:
                 "thread_id": row.get("thread_id"),
                 "updated_at": row.get("updated_at"),
             }
-            print(f"[rdbms] get_user_profile OK  user_id={user_id}")
+            self.logger.debug(f"get_user_profile OK  user_id={user_id}")
             return profile
         finally:
             conn.close()
@@ -306,7 +308,7 @@ class RelationalDB:
                 cur.execute(sql, (user_id,))
                 row = cur.fetchone()
             if not row:
-                print(f"[rdbms] get_user_academic_score: not found user_id={user_id}")
+                self.logger.debug(f"get_user_academic_score: not found user_id={user_id}")
                 return None
 
             scores = {
@@ -317,7 +319,7 @@ class RelationalDB:
                 "communication_clarity": float(row.get("communication_clarity", 0)),
                 "score_overall": float(row.get("score_overall", 0.0)),
             }
-            print(f"[rdbms] get_user_academic_score OK  user_id={user_id}")
+            self.logger.debug(f"get_user_academic_score OK  user_id={user_id}")
             return scores
         finally:
             conn.close()
@@ -365,7 +367,7 @@ class RelationalDB:
             vals.append(int(question_attempted))
 
         if not sets:
-            print(f"[rdbms] update_academic_score: nothing to update for user_id={user_id}")
+            self.logger.debug(f"update_academic_score: nothing to update for user_id={user_id}")
             return
 
         sql = f"UPDATE academic_summary SET {', '.join(sets)} WHERE user_id=%s"
@@ -376,6 +378,6 @@ class RelationalDB:
             with conn.cursor() as cur:
                 cur.execute(sql, tuple(vals))
             conn.commit()
-            print(f"[rdbms] academic_summary updated user_id={user_id}")
+            self.logger.info(f"academic_summary updated user_id={user_id}")
         finally:
             conn.close()

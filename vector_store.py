@@ -4,6 +4,7 @@ import os
 import re
 import time
 from typing import List, Optional, Dict, Any
+from log_utils import get_logger
 
 from openai import OpenAI
 from pinecone import Pinecone, ServerlessSpec
@@ -26,6 +27,7 @@ def _snake_list(xs: Optional[List[str]]) -> List[str]:
 
 class VectorStore:
     def __init__(self):
+        self.logger = get_logger("vector")
         self.index_name = os.getenv("PINECONE_INDEX_NAME", "interview_questions")
         self.namespace = os.getenv("PROFILES_NAMESPACE", "profiles_v1")
 
@@ -58,11 +60,42 @@ class VectorStore:
 
     def _embed_one(self, text: str) -> List[float]:
         # keep it tiny; it's a short summary
-        resp = self.emb_client.embeddings.create(
-            model=self.embedding_model,
-            input=[text],
-        )
-        return resp.data[0].embedding
+        try:
+            t = text if isinstance(text, str) else str(text or "")
+            t = t.strip()
+            if not t:
+                t = "user profile snapshot"
+            resp = self.emb_client.embeddings.create(
+                model=self.embedding_model,
+                input=t,
+            )
+            return resp.data[0].embedding
+        except Exception as e:
+            # Surface a concise error and re-raise for upstream handling
+            self.logger.error(f"embed error model={self.embedding_model}: {e}")
+            raise
+
+    def _compose_embed_text(
+        self,
+        *,
+        summary: Optional[str],
+        domain: Optional[str],
+        skills: Optional[List[str]],
+        strengths: Optional[List[str]],
+        weaknesses: Optional[List[str]],
+    ) -> str:
+        parts: List[str] = []
+        if isinstance(summary, str) and summary.strip():
+            parts.append(summary.strip())
+        if isinstance(domain, str) and domain.strip():
+            parts.append(f"domain: {domain.strip()}")
+        if skills:
+            parts.append("skills: " + ", ".join(list(map(str, skills))[:10]))
+        if strengths:
+            parts.append("strengths: " + ", ".join(list(map(str, strengths))[:5]))
+        if weaknesses:
+            parts.append("weaknesses: " + ", ".join(list(map(str, weaknesses))[:5]))
+        return " | ".join(parts) or "user profile snapshot"
 
     def upsert_profile_snapshot(
         self,
@@ -93,7 +126,17 @@ class VectorStore:
             pass
 
         vid = user_id
-        vec = self._embed_one(summary)
+        # robust embedding text: prefer summary, else compose from attributes
+        embed_text = (summary or "").strip()
+        if not embed_text:
+            embed_text = self._compose_embed_text(
+                summary=summary,
+                domain=domain,
+                skills=skills,
+                strengths=strengths,
+                weaknesses=weaknesses,
+            )
+        vec = self._embed_one(embed_text)
 
         md: Dict[str, Any] = {
             "type": "profile_snapshot",
@@ -115,7 +158,7 @@ class VectorStore:
             vectors=[(vid, vec, md)],
             namespace=self.namespace,
         )
-        print(f"[vector] upsert OK  ns={self.namespace} id={vid}")
+        self.logger.debug(f"upsert OK  ns={self.namespace} id={vid}")
         return vid
 
     def get_user_profile(self, user_id: str) -> dict | None:
@@ -127,7 +170,7 @@ class VectorStore:
         out = self.index.fetch(ids=[vid], namespace=self.namespace)
         vec = out.vectors.get(vid) if hasattr(out, "vectors") else None
         if not vec:
-            print(f"[vector] get_user_profile: not found  ns={self.namespace} id={vid}")
+            self.logger.debug(f"get_user_profile: not found  ns={self.namespace} id={vid}")
             return None
 
         profile = {
@@ -137,5 +180,5 @@ class VectorStore:
             # To include values:
             # "values": list(vec.values) if hasattr(vec, "values") else None,
         }
-        print(f"[vector] get_user_profile OK  ns={self.namespace} id={vid}")
+        self.logger.debug(f"get_user_profile OK  ns={self.namespace} id={vid}")
         return profile

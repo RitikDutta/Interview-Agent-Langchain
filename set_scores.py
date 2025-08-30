@@ -1,4 +1,7 @@
 from typing import Dict, Any, Optional
+from log_utils import get_logger
+
+logger = get_logger("scores")
 
 class ScoreUpdater:
     """
@@ -19,6 +22,7 @@ class ScoreUpdater:
         Get current scores (incl. question_attempted) from DB.
         Ensures float outputs for metrics and int for N.
         """
+        logger.debug(f"fetch_current user_id={user_id}")
         row = self.rdb.get_user_academic_score(user_id) or {}
         return {
             "technical_accuracy": float(row.get("technical_accuracy", 0.0)),
@@ -41,6 +45,7 @@ class ScoreUpdater:
         """
         Pure function: returns updated floats and does NOT write to DB.
         """
+        logger.debug("compute_updated alpha=%s hybrid_weight=%s", alpha, hybrid_weight)
         a = float(alpha if alpha is not None else self.default_alpha)
         w = float(hybrid_weight if hybrid_weight is not None else self.default_hybrid_weight)
 
@@ -95,6 +100,7 @@ class ScoreUpdater:
         writes them back, increments N by 1, and returns the updated dict.
         """
         # ensure row exists
+        logger.debug(f"update_and_save user_id={user_id}")
         self.rdb.ensure_academic_summary(user_id)
 
         current = self.fetch_current(user_id)
@@ -120,5 +126,6 @@ class ScoreUpdater:
             score_overall=updated["score_overall"],
             question_attempted=new_N,   # <-- bump N
         )
+        logger.info(f"scores updated user_id={user_id} N={new_N} overall={updated['score_overall']}")
 
         return {**updated, "question_attempted": new_N}

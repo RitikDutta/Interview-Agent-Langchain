@@ -26,13 +26,14 @@ from canonical_normalizer import (
     search_skills_batch_first,
 )
 
-# ------------ logging ------------
-LOG_LEVEL = os.getenv("RESUME_ETL_LOG_LEVEL", "INFO").upper()
-logging.basicConfig(
-    level=LOG_LEVEL,
-    format="%(asctime)s | %(levelname)s | %(name)s | %(message)s"
-)
-log = logging.getLogger("resume_etl")
+from log_utils import get_logger
+log = get_logger("resume_etl")
+_lvl = os.getenv("RESUME_ETL_LOG_LEVEL")
+if _lvl:
+    try:
+        log.setLevel(getattr(logging, _lvl.upper()))
+    except Exception:
+        pass
 
 load_dotenv()
 
@@ -199,9 +200,8 @@ class ResumeETL:
         prof: InterviewProfile = self.structured_llm.invoke(prompt)
 
         # Show raw structured output before normalization
-        print("\n==== PROFILE (raw LLM) ====\n" +
-              json.dumps(prof.model_dump(), indent=2, ensure_ascii=False) +
-              "\n==========================\n")
+        log.debug("==== PROFILE (raw LLM) ====\n%s\n==========================",
+                  json.dumps(prof.model_dump(), indent=2, ensure_ascii=False))
 
         # -------- Canonical normalization via your helpers --------
         # Domain (single)
@@ -257,9 +257,8 @@ class ResumeETL:
             }
         }
 
-        print("\n==== PROFILE (standardized) ====\n" +
-              json.dumps(normalized, indent=2, ensure_ascii=False) +
-              "\n================================\n")
+        log.debug("==== PROFILE (standardized) ====\n%s\n================================",
+                  json.dumps(normalized, indent=2, ensure_ascii=False))
 
         return normalized
 
@@ -300,7 +299,8 @@ class ResumeETL:
             "namespace": self.vdb.namespace,
             "pages_used": pages_used,
         }
-        print("\n==== LOAD RESULT ====\n" + json.dumps(result, indent=2) + "\n=====================\n")
+        log.debug("==== LOAD RESULT ====\n%s\n=====================",
+                  json.dumps(result, indent=2))
         log.info("[load] done")
         return result
 

@@ -10,6 +10,7 @@ load_dotenv()
 
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.prompts import ChatPromptTemplate
+from log_utils import get_logger
 
 from relational_database import RelationalDB
 from vector_store import VectorStore
@@ -47,6 +48,7 @@ class StrategicQuestionRouter:
         temperature: float = 0.2,
         retriever: Optional[QuestionSearch] = None,
     ):
+        self.logger = get_logger("planner")
         self.rdb = rdb
         self.vs = vs
         self.ns = questions_namespace
@@ -214,6 +216,7 @@ class StrategicQuestionRouter:
             else:
                 plan.query = self._normalize_query_topic(base)
 
+        self.logger.debug(f"plan: strategy={plan.strategy} domain={plan.domain} skill={plan.skill} diff={plan.difficulty} query='{plan.query}'")
         return plan
 
     def retrieve(self, user_id: str, plan: QueryPlan) -> Dict[str, Any]:
@@ -270,8 +273,9 @@ if __name__ == "__main__":
 
     for strat in strats:
         plan = router.plan(USER, strategy=strat)
-        print(f"\n[PLAN/{strat} \n] {plan.model_dump()}\n")
-        print("*"*20)
-        print(f'asking {plan.query}')
+        logger = get_logger("planner.demo")
+        logger.info(f"PLAN/{strat}: {plan.model_dump()}")
+        logger.info(f"asking: {plan.query}")
         results = retriever.query_search(plan.query, top_k=1)
-        print(results[0].score, results[0].metadata.get("text"))
+        if results:
+            logger.info(f"score={results[0].score} text={results[0].metadata.get('text')}")
