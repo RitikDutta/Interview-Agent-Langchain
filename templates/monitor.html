@@ -1,0 +1,250 @@
+<!doctype html>
+<html lang="en" data-bs-theme="dark">
+  <head>
+    <meta charset="utf-8">
+    <title>Interview Mentor • Monitor • {{ data.user_id }}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous">
+    <style>
+      body { padding: 24px; }
+      .chip { display:inline-block; padding:.25rem .5rem; border-radius:999px; font-size:.85rem; background: rgba(255,255,255,.08); margin:.125rem .25rem .25rem 0; }
+      pre.json { max-height: 420px; overflow:auto; background: #111; border:1px solid #333; padding:12px; border-radius:8px; }
+      .metric-label{ width: 180px; }
+      .card{ border-radius: 14px; }
+      .section-title{ font-size: 1.05rem; letter-spacing: .5px; text-transform: uppercase; color:#aaa; }
+    </style>
+  </head>
+  <body>
+    <div class="container-xxl">
+      <div class="d-flex align-items-center justify-content-between mb-3">
+        <h1 class="h4 m-0">Monitor: <span class="text-info">{{ data.user_id }}</span></h1>
+        <div class="d-flex gap-2">
+          <a class="btn btn-outline-secondary btn-sm" href="/monitor/api/{{ data.user_id }}.json" target="_blank">Open JSON</a>
+          <button class="btn btn-primary btn-sm" id="copyBtn">Copy JSON</button>
+          <button class="btn btn-outline-light btn-sm" onclick="location.reload()">Refresh</button>
+        </div>
+      </div>
+
+      <div class="row g-3">
+        <div class="col-lg-6">
+          <div class="card h-100">
+            <div class="card-body">
+              <div class="section-title mb-2">Relational DB – Profile</div>
+              {% set prof = data.rdb.profile or {} %}
+              <div class="mb-2"><b>Name:</b> {{ prof.name or "—" }}</div>
+              <div class="mb-2"><b>Domain:</b> <span class="badge bg-info-subtle text-info-emphasis">{{ prof.domain or "—" }}</span></div>
+              <div class="mb-2"><b>Updated:</b> {{ prof.updated_at or "—" }}</div>
+
+              <div class="mb-2"><b>Skills:</b><br>
+                {% for s in (prof.skills or []) %}
+                  <span class="chip">{{ s }}</span>
+                {% else %} <span class="text-muted">—</span>
+                {% endfor %}
+              </div>
+
+              <div class="mb-2"><b>Strengths:</b><br>
+                {% for s in (prof.strengths or []) %}
+                  <span class="chip">{{ s }}</span>
+                {% else %} <span class="text-muted">—</span>
+                {% endfor %}
+              </div>
+
+              <div class="mb-2"><b>Weaknesses:</b><br>
+                {% for s in (prof.weaknesses or []) %}
+                  <span class="chip">{{ s }}</span>
+                {% else %} <span class="text-muted">—</span>
+                {% endfor %}
+              </div>
+
+              <div class="mb-2"><b>Categories:</b><br>
+                {% for s in (prof.categories or []) %}
+                  <span class="chip">{{ s }}</span>
+                {% else %} <span class="text-muted">—</span>
+                {% endfor %}
+              </div>
+
+              <details class="mt-2">
+                <summary class="text-secondary">Raw (users row)</summary>
+                <pre class="json">{{ data.rdb.profile|tojson(indent=2) }}</pre>
+              </details>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-lg-6">
+          <div class="card h-100">
+            <div class="card-body">
+              <div class="section-title mb-2">Relational DB – Academic Summary</div>
+              {% set sc = data.rdb.scores or {} %}
+              <div class="d-flex align-items-center mb-2">
+                <span class="metric-label text-secondary">Attempts</span>
+                <span class="badge text-bg-dark">{{ sc.question_attempted or 0 }}</span>
+              </div>
+
+              {% macro meter(label, val) -%}
+                <div class="mb-2">
+                  <div class="d-flex justify-content-between">
+                    <span class="metric-label text-secondary">{{ label }}</span>
+                    <span class="text-muted">{{ (val or 0) | round(2) }}/10</span>
+                  </div>
+                  <div class="progress" role="progressbar" aria-label="{{ label }}">
+                    {% set p = ((val or 0)/10*100) | round(0) %}
+                    <div class="progress-bar" style="width: {{ p }}%"></div>
+                  </div>
+                </div>
+              {%- endmacro %}
+
+              {{ meter("Technical Accuracy", sc.technical_accuracy) }}
+              {{ meter("Reasoning Depth", sc.reasoning_depth) }}
+              {{ meter("Communication Clarity", sc.communication_clarity) }}
+              {{ meter("Overall (hybrid)", sc.score_overall) }}
+
+              <details class="mt-2">
+                <summary class="text-secondary">Raw (academic_summary row)</summary>
+                <pre class="json">{{ data.rdb.scores|tojson(indent=2) }}</pre>
+              </details>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="row g-3 mt-1">
+        <div class="col-lg-6">
+          <div class="card h-100">
+            <div class="card-body">
+              <div class="section-title mb-2">Vector DB – Profile Snapshot</div>
+              {% set md = data.vector.metadata or {} %}
+              <div class="mb-2"><b>Vector:</b> {{ data.vector.id or "—" }} <small class="text-secondary">({{ data.vector.namespace or "—" }})</small></div>
+              <div class="mb-2"><b>Domain:</b> <span class="badge bg-info-subtle text-info-emphasis">{{ md.domain or "—" }}</span></div>
+
+              <div class="mb-2"><b>Skills:</b><br>
+                {% for s in (md.skills or []) %}
+                  <span class="chip">{{ s }}</span>
+                {% else %} <span class="text-muted">—</span>
+                {% endfor %}
+              </div>
+
+              <div class="mb-2"><b>Strengths:</b><br>
+                {% for s in (md.strengths or []) %}
+                  <span class="chip">{{ s }}</span>
+                {% else %} <span class="text-muted">—</span>
+                {% endfor %}
+              </div>
+
+              <div class="mb-2"><b>Weaknesses:</b><br>
+                {% for s in (md.weaknesses or []) %}
+                  <span class="chip">{{ s }}</span>
+                {% else %} <span class="text-muted">—</span>
+                {% endfor %}
+              </div>
+
+              <div class="mb-2"><b>User Summary:</b>
+                <div class="text-body-tertiary">{{ md.user_summary or "—" }}</div>
+              </div>
+
+              <details class="mt-2">
+                <summary class="text-secondary">Raw (vector metadata)</summary>
+                <pre class="json">{{ md|tojson(indent=2) }}</pre>
+              </details>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-lg-6">
+          <div class="card h-100">
+            <div class="card-body">
+              <div class="section-title mb-2">Runtime State (LangGraph)</div>
+              {% set st = data.state or {} %}
+
+              <div class="mb-2"><b>Graph State:</b> {{ st.graph_state or "—" }}</div>
+              <div class="mb-2"><b>Strategy:</b> <span class="badge text-bg-secondary">{{ st.strategy or "—" }}</span></div>
+              <div class="mb-2"><b>Question:</b> {{ st.question or "—" }}</div>
+              <div class="mb-2"><b>Answer:</b> <div class="text-body-tertiary">{{ st.answer or "—" }}</div></div>
+
+              {% set mta = st.metric_technical_accuracy or {} %}
+              {% set mrd = st.metric_reasoning_depth or {} %}
+              {% set mcc = st.metric_communication_clarity or {} %}
+
+              <div class="mb-2"><b>Metrics:</b>
+                <ul class="mb-2">
+                  <li>TA: {{ mta.score or "—" }} — <span class="text-body-tertiary">{{ mta.feedback or "" }}</span></li>
+                  <li>RD: {{ mrd.score or "—" }} — <span class="text-body-tertiary">{{ mrd.feedback or "" }}</span></li>
+                  <li>CC: {{ mcc.score or "—" }} — <span class="text-body-tertiary">{{ mcc.feedback or "" }}</span></li>
+                </ul>
+              </div>
+
+              <div class="mb-2"><b>Combined Score:</b> {{ st.combined_score if st.combined_score is defined else "—" }}</div>
+              <div class="mb-2"><b>Overall Feedback:</b> <div class="text-body-tertiary">{{ st.overall_feedback_summary or "—" }}</div></div>
+
+              <details class="mt-2">
+                <summary class="text-secondary">Raw (full state)</summary>
+                <pre class="json" id="stateJson">{{ st|tojson(indent=2) }}</pre>
+              </details>
+
+              
+
+              <hr>
+              <div class="d-flex gap-2">
+                <input class="form-control" id="resumeInput" placeholder="Type reply to current prompt or value for interrupt...">
+                <button class="btn btn-success" id="sendBtn">Send</button>
+                <button class="btn btn-outline-primary" id="startBtn">Start</button>
+              </div>
+              <div class="form-text">Sends via LangGraph Command(resume=...). Use Start to initialize a new run.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <hr class="my-4">
+      <div class="text-center text-secondary small">Built for Interview Mentor • Flask + Bootstrap</div>
+    </div>
+
+    <script>
+      const USER_ID = {{ data.user_id|tojson }};
+      const RAW = {{ data|tojson(indent=2) }};
+
+      document.getElementById('copyBtn').onclick = async () => {
+        try {
+          await navigator.clipboard.writeText(JSON.stringify(RAW, null, 2));
+          const btn = document.getElementById('copyBtn');
+          btn.innerText = "Copied!";
+          setTimeout(()=>btn.innerText="Copy JSON", 900);
+        } catch(e) { alert("Copy failed"); }
+      };
+
+      async function api(path, body){
+        const res = await fetch(path, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body||{})});
+        if(!res.ok) throw new Error('HTTP '+res.status);
+        return await res.json();
+      }
+
+      document.getElementById('startBtn').onclick = async () => {
+        const btn = document.getElementById('startBtn');
+        btn.disabled = true; btn.innerText = 'Starting...';
+        try {
+          const data = await api(`/monitor/graph/${USER_ID}/start`, {strategy: 'scores'});
+          console.log('start:', data);
+          location.reload();
+        } catch(e){ alert('Start failed: '+e.message); }
+      };
+
+      document.getElementById('sendBtn').onclick = async () => {
+        const el = document.getElementById('resumeInput');
+        const val = el.value.trim();
+        if(!val) { el.focus(); return; }
+        const btn = document.getElementById('sendBtn');
+        btn.disabled = true; btn.innerText = 'Sending...';
+        try {
+          const data = await api(`/monitor/graph/${USER_ID}/resume`, {value: val});
+          console.log('resume:', data);
+          el.value='';
+          location.reload();
+        } catch(e){ alert('Send failed: '+e.message); }
+      };
+
+      // Dark mode preference
+      const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+      if (!prefersDark) document.documentElement.setAttribute("data-bs-theme","light");
+    </script>
+  </body>
+  </html>
