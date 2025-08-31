@@ -188,7 +188,7 @@ def gate_is_new_user(state: State) -> dict:
 def route_is_new_user(state: State) -> Literal["new_user", "existing_user"]:
     if "is_new_user" in state:
         flag = bool(state["is_new_user"])
-        logger.debug(f"[route_is_new_user] flag={flag}")
+        logger.thinking("route_is_new_user: flag=%s", flag)
         return "new_user" if flag else "existing_user"
     # heuristic fallback (optional)
     first = ""
@@ -198,7 +198,7 @@ def route_is_new_user(state: State) -> Literal["new_user", "existing_user"]:
             first = (m.get("content") or "").lower()
             break
     newbie = any(kw in first for kw in ("start", "new user", "first time", "setup"))
-    logger.debug(f"[route_is_new_user] inferred_new={newbie}")
+    logger.thinking("route_is_new_user inferred_new=%s", newbie)
     return "new_user" if newbie else "existing_user"
 
 def init_user(state: State) -> dict:
@@ -273,6 +273,7 @@ def get_domain(state: State) -> dict:
         return {"graph_state": "no_domain"}  # no domain key set
 
     logger.info(f"[get_domain] user_id={user_id} domain='{domain}'")
+    logger.thinking("Captured domain input → %s", domain)
     return {"graph_state": "have_domain", "domain": domain}
 
 def node_ask_resume(state: State) -> dict:
@@ -298,6 +299,7 @@ def get_resume_url(state: State) -> dict:
     # Normalize once
     try:
         kind, normalized = _normalize_resume_input(resume_value)
+        logger.thinking("Normalized resume input → kind=%s value_len=%d", kind, len(normalized or ""))
     except Exception as e:
         logger.warning(f"[get_resume_url] normalization error: {e} → continuing without resume")
         return {"graph_state": "no_resume_url"}
@@ -332,6 +334,7 @@ def is_resume_url(state: State) -> Literal["resume_is_present", "resume_is_not_p
 def node_resume_ETL(state: State) -> dict:
     logger.debug("node_resume_ETL")
     logger.info(f"[resume_ETL] source={state.get('resume_url')}")
+    logger.thinking("Running ResumeETL for user_id=%s", state.get("user_id"))
     resume_etl = ResumeETL(user_id=state.get("user_id"), verbose=True)
     profile = resume_etl.run(resume_url_or_path=state.get("resume_url") or "")
     return {"graph_state": "node_resume_ETL", "profile": profile}
@@ -355,6 +358,10 @@ def update_profile(state: State) -> dict:
     strengths = list(prof.get("strengths") or [])
     weaknesses = list(prof.get("weaknesses") or [])
     summary = (prof.get("user_summary") or "").strip()
+    logger.thinking(
+        "Updating profile: domain=%s skills=%d strengths=%d weaknesses=%d",
+        chosen_domain, len(skills), len(strengths), len(weaknesses),
+    )
 
     try:
         rdb.update_user_profile_partial(
@@ -395,8 +402,11 @@ def query_question(state: State) -> dict:
     user_id = state.get("user_id")
 
     # build a query using your router
-    plan = question_router.plan(user_id, strategy=state.get('strategy'))
+    strategy = state.get('strategy')
+    logger.thinking("Building question plan using strategy=%s", strategy)
+    plan = question_router.plan(user_id, strategy=strategy)
     q = (plan.query or "").strip()
+    logger.thinking("Plan topic → '%s' (diff=%s, domain=%s, skill=%s)", plan.query, plan.difficulty, plan.domain, plan.skill)
 
     # run your vector-store search
     results = retriever.query_search(q, top_k=1)
@@ -450,18 +460,21 @@ def ask_question(state: State) -> dict:
 def validate_technical_accuracy(state: State) -> Dict[str, Any]:
     q = state.get("question", "")
     a = state.get("answer", "")
+    logger.thinking("Evaluating technical_accuracy for question len=%d answer len=%d", len(q), len(a))
     result = _eval_metric_with_llm("technical_accuracy", q, a)
     return {"metric_technical_accuracy": result}
 
 def validate_reasoning_depth(state: State) -> Dict[str, Any]:
     q = state.get("question", "")
     a = state.get("answer", "")
+    logger.thinking("Evaluating reasoning_depth for question len=%d answer len=%d", len(q), len(a))
     result = _eval_metric_with_llm("reasoning_depth", q, a)
     return {"metric_reasoning_depth": result}
 
 def validate_communication_clarity(state: State) -> Dict[str, Any]:
     q = state.get("question", "")
     a = state.get("answer", "")
+    logger.thinking("Evaluating communication_clarity for question len=%d answer len=%d", len(q), len(a))
     result = _eval_metric_with_llm("communication_clarity", q, a)
     return {"metric_communication_clarity": result}
 
@@ -482,12 +495,14 @@ def metrics_barrier_decider(state: State) -> Literal["go", "wait"]:
             "metric_communication_clarity",
         )
     )
+    logger.thinking("Barrier check → have_all=%s", have_all)
     return "go" if have_all else "wait"
 
 def aggregate_feedback(state: State) -> Dict[str, Any]:
     m_ta, m_rd, m_cc = state["metric_technical_accuracy"], state["metric_reasoning_depth"], state["metric_communication_clarity"]
     s_ta, s_rd, s_cc = int(m_ta["score"]), int(m_rd["score"]), int(m_cc["score"])
     combined = int(round((s_ta + s_rd + s_cc) / 3))  # single source of truth
+    logger.thinking("Computed scores TA=%d RD=%d CC=%d → combined=%d", s_ta, s_rd, s_cc, combined)
 
     sys = SystemMessage(content=(
         "You are a senior interview evaluator. Based strictly on the three metric feedback snippets and scores, "
@@ -551,6 +566,7 @@ def update_profile_with_score(state: State) -> dict:
         'reasoning_depth': rd,
         'communication_clarity': cc,
     }
+    logger.thinking("Updating scores EMA with TA=%s RD=%s CC=%s", ta, rd, cc)
     set_score.update_and_save(user_id, scores)
 
     # Also persist strengths/weaknesses gathered during aggregation to both DBs
@@ -596,6 +612,7 @@ def update_strength_weakness(state: State) -> dict:
     # Strengths and weaknesses may be empty
     new_strengths = (state.get("strengths") or [])[:]
     new_weaknesses = (state.get("weaknesses") or [])[:]
+    logger.thinking("Merging strengths=%d weaknesses=%d into profile", len(new_strengths), len(new_weaknesses))
 
     # nothing to add → no-op
     if not new_strengths and not new_weaknesses:

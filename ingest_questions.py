@@ -15,6 +15,8 @@ from openai import OpenAI
 from pinecone import Pinecone, ServerlessSpec
 from dotenv import load_dotenv
 load_dotenv()
+from log_utils import get_logger
+logger = get_logger("ingest")
 
 # =============================== MODELS ======================================
 
@@ -237,7 +239,8 @@ def ingest_pdf(
 
     source_pdf = os.path.basename(pdf_path)
     pages = extract_pdf_blocks(pdf_path)
-    print(f"[INGEST] File: {source_pdf}  Pages with text: {len(pages)}")
+    logger.info(f"[INGEST] File: {source_pdf}  Pages with text: {len(pages)}")
+    logger.thinking("Segmenting pages into questions using LLM")
 
     seg_chain = get_segment_chain()
     candidates: List[Dict[str, Any]] = []
@@ -292,11 +295,11 @@ def ingest_pdf(
                 "metadata": meta,
             })
 
-    print(f"[SEGMENT] Found unique questions: {len(candidates)}")
+    logger.info(f"[SEGMENT] Found unique questions: {len(candidates)}")
 
     # Optional near-duplicate pruning (token Jaccard)
     if near_dup_sim:
-        print(f"[DEDUP] Near-dup threshold: {near_dup_sim}")
+        logger.info(f"[DEDUP] Near-dup threshold: {near_dup_sim}")
         pruned, seen_texts = [], []
         for c in candidates:
             a = set(c["text"].lower().split())
@@ -304,28 +307,30 @@ def ingest_pdf(
                    for t in seen_texts):
                 continue
             pruned.append(c); seen_texts.append(c["text"])
-        print(f"[DEDUP] Kept after near-dup pruning: {len(pruned)} (from {len(candidates)})")
+        logger.thinking("Near-dup prune kept=%d from=%d", len(pruned), len(candidates))
+        logger.info(f"[DEDUP] Kept after near-dup pruning: {len(pruned)} (from {len(candidates)})")
         candidates = pruned
 
     if not candidates:
-        print("[EXIT] No candidates to embed/upsert.")
+        logger.warning("[EXIT] No candidates to embed/upsert.")
         return
 
     # Embed + upsert
     texts = [c["text"] for c in candidates]
+    logger.thinking("Embedding %d question texts", len(texts))
     embeddings = embed_texts(oa, texts)
     batch, BATCH, total = [], 200, 0
     for c, vec in zip(candidates, embeddings):
         batch.append({"id": c["id"], "embedding": vec, "metadata": c["metadata"]})
         if len(batch) >= BATCH:
             upsert_to_pinecone(index, batch, namespace=namespace)
-            total += len(batch); print(f"[UPSERT] {total} vectors upserted...")
+            total += len(batch); logger.info(f"[UPSERT] {total} vectors upserted...")
             batch = []
     if batch:
         upsert_to_pinecone(index, batch, namespace=namespace)
-        total += len(batch); print(f"[UPSERT] {total} vectors upserted...")
+        total += len(batch); logger.info(f"[UPSERT] {total} vectors upserted...")
 
-    print("[DONE] Ingestion complete.")
+    logger.info("[DONE] Ingestion complete.")
 
 # ============================== SEARCH =======================================
 
@@ -449,19 +454,20 @@ def search_questions(
     if sparse_vec is not None:
         kwargs["sparse_vector"] = sparse_vec
 
+    logger.thinking("search mode=%s top_k=%d filter_keys=%s has_query=%s", mode, top_k, list((filt or {}).keys()), bool(query))
     res = index.query(**kwargs)
     matches = res.get("matches", []) if isinstance(res, dict) else res.matches
 
-    print("=== SEARCH RESULTS ===")
+    logger.info("=== SEARCH RESULTS ===")
     for m in matches:
         md = m.get("metadata", {})
-        print(f"- score={m.get('score'):.4f}  id={m.get('id')}")
-        print(f"  skill={md.get('skill')} | domain={md.get('domain')} | categories={md.get('categories')}")
-        print(f"  subskill={md.get('subskill')}, difficulty={md.get('difficulty')}, lang={md.get('lang')}")
-        print(f"  tags={md.get('tags')} | type={md.get('type')} | version={md.get('version')}")
-        print(f"  text: {md.get('text')[:220].strip()}{'...' if len(md.get('text',''))>220 else ''}")
-        print(f"  src: {md.get('source_pdf')} (p.{md.get('page')})  content_hash={md.get('content_hash')}")
-        print()
+        logger.info(f"- score={m.get('score'):.4f}  id={m.get('id')}")
+        logger.info(f"  skill={md.get('skill')} | domain={md.get('domain')} | categories={md.get('categories')}")
+        logger.info(f"  subskill={md.get('subskill')}, difficulty={md.get('difficulty')}, lang={md.get('lang')}")
+        logger.info(f"  tags={md.get('tags')} | type={md.get('type')} | version={md.get('version')}")
+        logger.info(f"  text: {md.get('text')[:220].strip()}{'...' if len(md.get('text',''))>220 else ''}")
+        logger.info(f"  src: {md.get('source_pdf')} (p.{md.get('page')})  content_hash={md.get('content_hash')}")
+        logger.info("")
 
 # ============================== EXAMPLE RUN ==================================
 if __name__ == "__main__":

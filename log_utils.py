@@ -3,6 +3,19 @@ import os
 import sys
 
 
+THINKING_LEVEL = logging.DEBUG + 5
+logging.addLevelName(THINKING_LEVEL, "THINKING")
+setattr(logging, "THINKING", THINKING_LEVEL)
+
+
+def _thinking(self, msg, *args, **kwargs):
+    if self.isEnabledFor(THINKING_LEVEL):
+        self._log(THINKING_LEVEL, msg, args, **kwargs)
+
+
+setattr(logging.Logger, "thinking", _thinking)
+
+
 class _ColorFormatter(logging.Formatter):
     COLORS = {
         "DEBUG": "\x1b[36m",      # cyan
@@ -10,6 +23,7 @@ class _ColorFormatter(logging.Formatter):
         "WARNING": "\x1b[33m",    # yellow
         "ERROR": "\x1b[31m",      # red
         "CRITICAL": "\x1b[35m",   # magenta
+        "THINKING": "\x1b[38;5;208m",  # orange (256-color)
     }
     RESET = "\x1b[0m"
 
@@ -73,4 +87,3 @@ def get_logger(name: str | None = None, *, level_name: str | None = None) -> log
 
 # default shared logger for simple imports
 logger = get_logger()
-

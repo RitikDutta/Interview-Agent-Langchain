@@ -140,12 +140,21 @@ class StrategicQuestionRouter:
     # Deterministic strategy choice (override via arg if needed)
     def choose_strategy(self, prof: Dict[str, Any]) -> str:
         scores = prof["scores"]
+        # Internal reasoning log
+        self.logger.thinking(
+            "Choosing strategy with scores_overall=%s skills=%d strengths=%d weaknesses=%d",
+            scores.get("score_overall"), len(prof.get("skills") or []), len(prof.get("strengths") or []), len(prof.get("weaknesses") or []),
+        )
         if prof["weaknesses"]:
+            self.logger.thinking("Selecting 'weakness' strategy due to reported weaknesses")
             return "weakness"
         if (scores.get("score_overall") or 0) < 4:
+            self.logger.thinking("Selecting 'scores' strategy due to low overall score")
             return "scores"
         if prof["skills"]:
+            self.logger.thinking("Selecting 'skills' strategy due to available skills")
             return "skills"
+        self.logger.thinking("Defaulting to 'strength' strategy")
         return "strength"
 
     def _sample_skill(self, skills: List[str]) -> Optional[str]:
@@ -156,9 +165,13 @@ class StrategicQuestionRouter:
         strategy = (strategy or self.choose_strategy(prof))
         # seed for skills strategy
         picked_skill = self._sample_skill(prof["skills"]) if strategy == "skills" else None
+        if picked_skill:
+            self.logger.thinking("Sampled skill for bias: %s", picked_skill)
 
         # Produce a compact plan (structured output)
         chain = self.prompt | self.llm.with_structured_output(QueryPlan)
+        self.logger.thinking("Invoking LLM for plan: strategy=%s domain=%s skills=%d strengths=%d weaknesses=%d",
+                            strategy, prof["domain"] or "", len(prof["skills"]), len(prof["strengths"]), len(prof["weaknesses"]))
         plan = chain.invoke({
             "strategy": strategy,
             "domain": prof["domain"] or "data_science",
@@ -199,6 +212,7 @@ class StrategicQuestionRouter:
 
         # Ensure the query is a topic (never a full question)
         plan.query = self._normalize_query_topic(plan.query)
+        self.logger.thinking("Planned topic='%s' diff=%s domain=%s skill=%s", plan.query, plan.difficulty, plan.domain, plan.skill)
         if not plan.query:
             # Fallback topic based on available signals
             base: Optional[str] = None

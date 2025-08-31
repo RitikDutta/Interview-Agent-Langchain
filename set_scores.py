@@ -77,6 +77,10 @@ class ScoreUpdater:
 
         # hybrid overall
         overall_hybrid = w * overall_from_metrics + (1.0 - w) * lifetime_mean
+        logger.thinking(
+            "Computed EMA: TA=%.2f RD=%.2f CC=%.2f | overall_from_metrics=%.2f lifetime_mean=%.2f → hybrid=%.2f",
+            ta_new, rd_new, cc_new, overall_from_metrics, lifetime_mean, overall_hybrid,
+        )
 
         return {
             "technical_accuracy": round(ta_new, round_ndigits),

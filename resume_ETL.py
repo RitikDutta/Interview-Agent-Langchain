@@ -202,6 +202,8 @@ class ResumeETL:
         # Show raw structured output before normalization
         log.debug("==== PROFILE (raw LLM) ====\n%s\n==========================",
                   json.dumps(prof.model_dump(), indent=2, ensure_ascii=False))
+        log.thinking("LLM extracted domain=%s skills=%d strengths=%d weaknesses=%d",
+                     prof.domain, len(prof.technical_skills or []), len(prof.strengths or []), len(prof.weaknesses or []))
 
         # -------- Canonical normalization via your helpers --------
         # Domain (single)
@@ -209,6 +211,7 @@ class ResumeETL:
         dom_hit = search_domains_first(dom_key)  # Optional[dict]
         dom_canon = dom_hit.get("canonical") if dom_hit else prof.domain
         dom_cat = dom_hit.get("category") if dom_hit else None
+        log.thinking("Domain normalization: raw=%s → canonical=%s category=%s", prof.domain, dom_canon, dom_cat)
 
         # Skills (batch) — convert to snake first as your normalizer expects
         skill_keys = [to_snake_lower(s) for s in (prof.technical_skills or [])]
@@ -229,6 +232,10 @@ class ResumeETL:
                 original = (prof.technical_skills or [])[i] if i < len(prof.technical_skills or []) else raw_lab
                 skills_canon.append(original)
                 misses.append(original)
+        if skills_canon:
+            log.thinking("Normalized skills → %s", skills_canon)
+        if misses:
+            log.thinking("Unmatched skills → %s", misses)
 
         # Aggregate categories (unique) from domain + skills
         categories: List[str] = []
