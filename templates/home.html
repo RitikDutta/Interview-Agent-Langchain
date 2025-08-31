@@ -1,99 +1,829 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-	<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-	<meta charset="utf-8">
-	<meta name="viewport" content="width=device-width, initial-scale=1" />
-	<link rel="preconnect" href="https://fonts.googleapis.com">
-	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-	<link href="https://fonts.googleapis.com/css2?family=Amatic+SC:wght@400;700&display=swap" rel="stylesheet">
-	<style>
-		.amatic-sc-bold {
-		  font-family: "Amatic SC", sans-serif;
-		  font-weight: 700;
-		  font-style: normal;
-		  font-size: 9em;
-		  text-align: center; /* Centers the text horizontally */
-		  width: 100%; /* Ensures the container can expand full width */
-		  position: absolute; /* Allows precise placement in the page */
-		  top: 20%; /* Positions the text at the top of the page */
-		  left: 0; /* Aligns the text block to the left edge, combined with width: 100% centers it */
-		  margin-top: 0; /* Removes any default margin */
-		  color: #3b68bf !important;
-		}
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Interview Ready - Your AI Interview Coach</title>
 
-		.login_button {
-		  font-family: "Amatic SC", sans-serif;
-		  font-size: 6em;
-		  position: absolute; /* Positions the button absolutely relative to its nearest positioned ancestor */
-/*		  bottom: 5%;*/
-		  top: 2%;
-		  right: 5%;          /* Positions the button 5% from the right of the nearest positioned ancestor */
-		  color: #3b68bf;     /* Sets the text color */
-		  font-weight: 700;
-		  z-index: 10;        /* Ensures the button is on top if they still touch */
+    <!-- google fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Amatic+SC:wght@400;700&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
-		}
+    <!-- icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha512-iecdLmaskl7CVkqkXNQ/ZH/XLlvWZOJyj7Yy7tcenmpD1ypASozpmT/E0iPtmFIB46ZmdtAc9eNBvH0H/ZpiBw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
 
-.centered-image {
-  position: absolute;  /* Absolute positioning relative to its nearest positioned ancestor */
-  bottom: 0;           /* Position the bottom edge of the image at the bottom of the parent */
-  left: 35%;             /* Position the left edge of the image at the left of the parent */
-  display: block;      /* Block display to allow for width and height adjustments if needed */
-  width: 28%;         /* Sets width to 50% of the viewport width */
-  height: auto;        /* Auto height to maintain aspect ratio */
-  min-width: 300px;    /* Minimum width to ensure the image does not become too small */
-  max-width: 95%;      /* Limit the maximum width to avoid overflowing the viewport */
-}
+    <style>
+        /* --- some base setup and color variables --- */
+        :root {
+            --primary-color: #3b68bf;
+            --primary-dark: #2a4a87;
+            --secondary-color: #4ecdc4;
+            --light-bg: #f4f7fc;
+            --white-color: #ffffff;
+            --dark-text: #333;
+            --medium-text: #555;
+            --light-text: #777;
+            --heart-color: #e44d4d; /* specific color for heart */
+            --border-radius: 8px;
+            --card-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+            --section-padding: 5rem 5%;
+        }
 
-		.amatic-sc-bold_h3 {
-/*		  font-family: "Amatic SC", sans-serif;*/
-		  font-weight: 700;
-		  font-style: normal;
-		  font-size: 1em;
-		  top: 50%;
-		  text-align: center; /* Centers the text horizontally */
-		  width: 100%; /* Ensures the container can expand full width */
-		  position: absolute; /* Allows precise placement in the page */
-		  left: 0; /* Aligns the text block to the left edge, combined with width: 100% centers it */
-		  margin-top: 0; /* Removes any default margin */
-		  color: #3b68bf !important;
-		}
+        *,
+        *::before,
+        *::after {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
 
-		/* General styles for the text */
-.text-center {
-    display: flex;
-    align-items: center; /* Aligns vertically */
-    justify-content: center; /* Aligns horizontally */
-    height: 10vh; /* Full viewport height */
-    text-align: center; /* Ensures text is centered horizontally */
-    margin: 0; /* Removes default margin */
-    padding: 0; /* Removes default padding */
-}
+        html {
+            scroll-behavior: smooth;
+            font-size: 16px;
+        }
 
-/* Media query for viewport widths less than 655 pixels */
-@media (max-width: 655px) {
-   
-    .centered-image {
-    	left: -50px;
-    }
-    .amatic-sc-bold {
-      font-size: 5em;
-    }
-}
+        body {
+            font-family: 'Poppins', sans-serif;
+            line-height: 1.7;
+            color: var(--dark-text);
+            background-color: var(--white-color);
+            overflow-x: hidden;
+        }
+
+        img {
+            max-width: 100%;
+            height: auto;
+            display: block;
+        }
+
+        a {
+            text-decoration: none;
+            color: var(--primary-color);
+            transition: color 0.3s ease;
+        }
+
+        a:hover {
+            color: var(--primary-dark);
+        }
+
+        h1, h2, h3, h4 {
+            font-weight: 600;
+            line-height: 1.3;
+            margin-bottom: 1rem;
+            color: var(--primary-dark);
+        }
+
+        h1 { font-size: clamp(2.5rem, 5vw, 3.5rem); }
+        h2 { font-size: clamp(2rem, 4vw, 2.8rem); text-align: center; margin-bottom: 3rem;}
+        h3 { font-size: clamp(1.4rem, 3vw, 1.8rem); }
+        p { margin-bottom: 1rem; color: var(--medium-text); }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 15px;
+        }
+
+        /* --- button styles --- */
+        .button {
+            display: inline-block;
+            padding: 0.8em 2em;
+            border-radius: 50px;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: clamp(0.9rem, 1.5vw, 1rem);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: none;
+            text-align: center;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+        }
+
+        .button-primary {
+            background-color: var(--primary-color);
+            color: var(--white-color);
+            box-shadow: 0 4px 10px rgba(59, 104, 191, 0.3);
+        }
+
+        .button-primary:hover,
+        .button-primary:focus {
+            background-color: var(--primary-dark);
+            color: var(--white-color);
+            transform: translateY(-3px);
+            box-shadow: 0 6px 15px rgba(42, 74, 135, 0.4);
+        }
+
+        .button-secondary {
+            background-color: transparent;
+            border: 2px solid var(--primary-color);
+            color: var(--primary-color);
+        }
+
+        .button-secondary:hover,
+        .button-secondary:focus {
+            background-color: var(--primary-color);
+            color: var(--white-color);
+            transform: translateY(-2px);
+        }
+        
+        /* --- NEW: Highlighted button style --- */
+        .button-highlight {
+            background-color: var(--secondary-color);
+            color: var(--white-color);
+            box-shadow: 0 4px 15px rgba(78, 205, 196, 0.4);
+            animation: pulse-animation 2s infinite;
+        }
+
+        .button-highlight:hover,
+        .button-highlight:focus {
+            background-color: #45b8af; /* Slightly darker shade of secondary */
+            color: var(--white-color);
+            transform: translateY(-3px);
+            box-shadow: 0 6px 20px rgba(78, 205, 196, 0.5);
+            animation-play-state: paused; /* Pause animation on hover */
+        }
+
+        @keyframes pulse-animation {
+            0% { box-shadow: 0 4px 15px rgba(78, 205, 196, 0.4); }
+            50% { box-shadow: 0 4px 25px rgba(78, 205, 196, 0.6); }
+            100% { box-shadow: 0 4px 15px rgba(78, 205, 196, 0.4); }
+        }
+        /* --- End of new style --- */
 
 
-	</style>
+        /* --- header styles --- */
+        .main-header {
+            padding: 1rem 5%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            z-index: 1000;
+            background: linear-gradient(to bottom, rgba(255,255,255,0.9), rgba(255,255,255,0));
+        }
+
+        .logo {
+            font-family: "Amatic SC", cursive;
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: var(--primary-color);
+        }
+
+        .main-nav {
+            display: flex; /* For aligning items in nav */
+            align-items: center; /* Vertically align items */
+            gap: 1.5rem; /* Space between nav items */
+        }
+
+        .main-nav a {
+            font-weight: 500;
+            color: var(--primary-dark);
+            transition: color 0.3s ease;
+            white-space: nowrap; /* Prevent button text from wrapping */
+        }
+        .main-nav a:hover {
+             color: var(--secondary-color);
+        }
+        .main-nav .button {
+            margin-left: 0; /* Remove default left margin for better control with gap */
+        }
+        .main-nav .button-secondary {
+            padding: 0.5em 1.5em; /* smaller login button */
+        }
+        .main-nav .button-highlight {
+            padding: 0.5em 1.5em; /* match other nav buttons */
+        }
+
+        /* hamburger menu for mobile */
+        .menu-toggle {
+            display: none;
+            font-size: 1.5rem;
+            background: none;
+            border: none;
+            color: var(--primary-dark);
+            cursor: pointer;
+        }
+
+        /* --- hero section (the top banner) --- */
+        .hero-section {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            padding: 8rem 5% 4rem;
+            background: linear-gradient(135deg, rgba(244, 247, 252, 0.8), rgba(220, 230, 245, 0.8)), url('images/your-background.jpg') no-repeat center center;
+            background-size: cover;
+            position: relative; /* needed for absolute positioning of attribution */
+        }
+
+        .hero-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            align-items: center;
+            gap: 3rem;
+            max-width: 1200px;
+            margin: 0 auto;
+            width: 100%; /* ensure content takes full width for positioning context */
+        }
+
+        .hero-text {
+            animation: slideInLeft 1s ease-out;
+        }
+
+        .hero-title {
+            font-family: "Amatic SC", cursive;
+            font-weight: 700;
+            font-size: clamp(4.5rem, 10vw, 7rem);
+            color: var(--primary-color);
+            line-height: 1.1;
+            margin-bottom: 1rem;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .hero-subtitle {
+            font-size: clamp(1.1rem, 2vw, 1.4rem);
+            color: var(--medium-text);
+            margin-bottom: 2.5rem;
+            max-width: 550px;
+        }
+
+        .hero-cta {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            align-items: center; /* Align buttons nicely if they wrap */
+        }
+
+        .hero-image-container {
+            text-align: center;
+            animation: fadeInRight 1s ease-out 0.3s;
+            animation-fill-mode: backwards;
+        }
+
+        .hero-image {
+            max-width: 400px;
+            height: auto;
+            margin: 0 auto;
+            filter: drop-shadow(0 10px 20px rgba(0, 0, 0, 0.15));
+            transition: transform 0.4s ease-in-out;
+        }
+        .hero-image:hover {
+             transform: scale(1.05) rotate(-2deg);
+        }
+
+        /* attribution line in hero section */
+        .hero-attribution {
+            position: absolute;
+            bottom: 20px;
+            right: 5%; /* align with section padding */
+            font-size: 0.85rem;
+            color: var(--medium-text);
+            z-index: 10;
+        }
+        .hero-attribution .fa-heart {
+            color: var(--heart-color);
+            margin: 0 3px;
+            transition: transform 0.3s ease-in-out;
+            display: inline-block; /* needed for transform */
+            cursor: default; /* indicate it's not clickable, just hoverable */
+        }
+        .hero-attribution .fa-heart:hover {
+            transform: scale(1.4);
+        }
+         .hero-attribution a {
+            font-weight: 600;
+            color: var(--primary-dark);
+         }
+         .hero-attribution a:hover {
+            color: var(--primary-color);
+            text-decoration: underline;
+         }
+
+        /* --- basic styles for content sections --- */
+        .section {
+            padding: var(--section-padding);
+        }
+        .section-light { background-color: var(--white-color); }
+        .section-dark { background-color: var(--light-bg); }
+        .section-gradient {
+            background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+            color: var(--white-color);
+        }
+        .section-gradient h2, .section-gradient p {
+             color: var(--white-color);
+        }
+
+        /* --- problem/solution section --- */
+        .problem-solution {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 4rem;
+            align-items: center;
+        }
+
+        .problem-solution .icon {
+            font-size: 3rem;
+            color: var(--secondary-color);
+            margin-bottom: 1rem;
+        }
+
+        /* --- how it works section --- */
+        .how-it-works-steps {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 2.5rem;
+            text-align: center;
+            margin-top: 3rem;
+        }
+
+        .step {
+            background: var(--white-color);
+            padding: 2rem;
+            border-radius: var(--border-radius);
+            box-shadow: var(--card-shadow);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        .step:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
+        }
+
+        .step-icon {
+            font-size: 2.5rem;
+            color: var(--primary-color);
+            margin-bottom: 1.5rem;
+            display: inline-block;
+            background-color: rgba(59, 104, 191, 0.1);
+            width: 70px;
+            height: 70px;
+            line-height: 70px;
+            border-radius: 50%;
+        }
+         .step h3 {
+            margin-bottom: 0.5rem;
+            font-size: 1.3rem;
+         }
+
+        /* --- features section --- */
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+        }
+
+        .feature-card {
+            background: var(--white-color);
+            padding: 2rem 1.5rem;
+            border-radius: var(--border-radius);
+            box-shadow: var(--card-shadow);
+            display: flex;
+            align-items: flex-start;
+            gap: 1.5rem;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        .feature-card:hover {
+             transform: translateY(-5px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
+        }
+
+        .feature-icon {
+            font-size: 1.8rem;
+            color: var(--secondary-color);
+             margin-top: 5px;
+             min-width: 30px;
+             text-align: center;
+        }
+        .feature-card h3 {
+             font-size: 1.2rem;
+             margin-bottom: 0.5rem;
+        }
+         .feature-card p {
+             font-size: 0.95rem;
+             line-height: 1.6;
+             margin-bottom: 0;
+         }
+
+        /* --- tech stack section --- */
+        .tech-stack-logos {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 2.5rem;
+            margin-top: 3rem;
+        }
+        .tech-logo {
+             text-align: center;
+        }
+        .tech-logo i {
+            font-size: 3rem;
+            color: var(--primary-color);
+            margin-bottom: 0.5rem;
+            transition: transform 0.3s ease;
+        }
+        .tech-logo:hover i {
+            transform: scale(1.1);
+            color: var(--primary-dark);
+        }
+        .tech-logo span {
+            display: block;
+            font-size: 0.9rem;
+            color: var(--light-text);
+            font-weight: 500;
+        }
+
+        /* --- call to action section --- */
+        .cta-section {
+            text-align: center;
+        }
+        .cta-section h2 {
+            color: var(--white-color);
+            margin-bottom: 1.5rem;
+        }
+         .cta-section p {
+            max-width: 600px;
+            margin: 0 auto 2.5rem auto;
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 1.1rem;
+         }
+
+        /* --- footer --- */
+        .main-footer {
+            padding: 2.5rem 5%; /* slightly more padding */
+            text-align: center;
+            background-color: var(--primary-dark);
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 0.9rem;
+            margin-top: auto; /* pushes footer down */
+        }
+        .footer-socials a {
+             color: rgba(255, 255, 255, 0.7);
+             margin: 0 0.75rem;
+             font-size: 1.5rem; /* larger icons */
+             transition: color 0.3s ease, transform 0.3s ease;
+             display: inline-block;
+        }
+        .footer-socials a:hover {
+             color: var(--white-color);
+             transform: translateY(-3px);
+        }
+
+
+        /* --- simple animations --- */
+        @keyframes slideInLeft {
+            from { transform: translateX(-50px); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        @keyframes fadeInRight {
+            from { transform: translateX(50px); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        /* class for js fade-in */
+        .fade-in-section {
+            opacity: 0;
+            transform: translateY(30px);
+            transition: opacity 0.8s ease-out, transform 0.8s ease-out;
+        }
+        .fade-in-section.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* --- making it responsive --- */
+        @media (max-width: 992px) {
+             :root { --section-padding: 4rem 5%; }
+             h1 { font-size: clamp(2.2rem, 6vw, 3rem); }
+             h2 { font-size: clamp(1.8rem, 5vw, 2.4rem); }
+
+            .hero-content {
+                grid-template-columns: 1fr;
+                text-align: center;
+            }
+            .hero-text { order: 2; }
+            .hero-image-container { order: 1; margin-bottom: 2rem;}
+            .hero-subtitle { margin: 0 auto 2.5rem auto; }
+            .hero-cta { justify-content: center;}
+
+            .problem-solution {
+                 grid-template-columns: 1fr;
+                 text-align: center;
+            }
+            .problem-solution > div {
+                 margin-bottom: 2rem;
+            }
+            .tech-stack-logos { gap: 2rem; }
+        }
+
+
+        @media (max-width: 768px) {
+            .main-header { padding: 1rem 3%;}
+             .main-nav {
+                display: none;
+                position: absolute;
+                top: 70px;
+                left: 0;
+                width: 100%;
+                background-color: var(--white-color);
+                box-shadow: 0 5px 10px rgba(0,0,0,0.1);
+                flex-direction: column;
+                align-items: center;
+                padding: 1rem 0;
+                gap: 0; /* reset gap for column layout */
+             }
+             .main-nav.active { display: flex; }
+             .main-nav a { 
+                margin: 0.5rem 0; 
+                width: 100%; 
+                text-align:center; 
+                padding: 0.5rem 0; 
+            }
+             .main-nav .button-secondary, .main-nav .button-highlight { margin: 1rem 0 0.5rem 0; }
+             .main-nav .button-highlight { margin-top: 0.5rem; margin-bottom: 0.5rem; }
+
+            .menu-toggle { display: block; }
+
+             :root { --section-padding: 3rem 5%; }
+             .features-grid { grid-template-columns: 1fr; }
+             .how-it-works-steps { grid-template-columns: 1fr; }
+             .tech-logo i { font-size: 2.5rem; }
+
+            /* adjust attribution position on smaller screens */
+             .hero-attribution {
+                font-size: 0.75rem;
+                right: 3%;
+                bottom: 15px;
+                text-align: right; /* ensure text stays right aligned if it wraps */
+             }
+        }
+
+        @media (max-width: 480px) {
+            .hero-title { font-size: clamp(3.5rem, 12vw, 4.5rem); }
+            .hero-subtitle { font-size: clamp(1rem, 4vw, 1.1rem); }
+            .button { padding: 0.7em 1.5em; font-size: 0.9rem;}
+            .hero-image { max-width: 280px;}
+            .feature-card { flex-direction: column; text-align: center; align-items: center; gap: 1rem; }
+            .feature-icon { margin-bottom: 0.5rem; }
+            .hero-attribution {
+                 /* maybe hide or make smaller on very small screens */
+                 /* display: none; */
+                 font-size: 0.7rem;
+                 max-width: 150px; /* prevent overlap */
+            }
+            .footer-socials a {
+                 font-size: 1.3rem;
+                 margin: 0 0.5rem;
+            }
+        }
+
+    </style>
 </head>
-<body class='bg_img'>
-	<h1 class="amatic-sc-bold">Interview Ready</h1>
-	<h3 class="amatic-sc-bold_h3 text-center">Ace Your Next Interview with Confidence: Comprehensive Tools and Coaching to Help You Shine in Every Question</h3>
-	<img src="static/images/interview_ready_chr.png" alt="Descriptive Alt Text" class="centered-image">
+<body>
 
-	{% block content %}
-	<!-- <h1 >Personal Mentor</h1> -->
-	<a href="{{ url_for('login') }}" class="login_button">Login</a>
-	{% endblock %}	
+    <header class="main-header">
+        <a href="#" class="logo">Interview Ready</a>
+        <nav class="main-nav" id="mainNav">
+            <a href="#features">features</a>
+            <a href="#how-it-works">how it works</a>
+            <a href="#tech-stack">technology</a>
+            <!-- link to login page -->
+            <a href="login" class="button button-secondary">login</a>
+            <!-- NEW HIGHLIGHTED BUTTON ADDED HERE -->
+            <a href="/langraph" class="button button-highlight">New Vector Rag Demo</a>
+        </nav>
+         <button class="menu-toggle" id="menuToggle" aria-label="Toggle menu">
+            <i class="fas fa-bars"></i>
+        </button>
+    </header>
+
+    <main>
+        <!-- ========= hero section ========= -->
+        <section class="hero-section">
+            <div class="hero-content">
+                <div class="hero-text">
+                    <h1 class="hero-title">Interview Ready</h1>
+                    <p class="hero-subtitle">Your Personal AI Interview Coach. Practice anytime, anywhere, and land your dream job with confidence.</p>
+                    <div class="hero-cta">
+                         <!-- link to app/signup -->
+                        <a href="login" class="button button-primary">get started now</a>
+                        <!-- NEW HIGHLIGHTED BUTTON ADDED HERE -->
+                        <a href="/langraph" class="button button-highlight">New Vector Rag Demo</a>
+                        <a href="#features" class="button button-secondary">learn more</a>
+                    </div>
+                </div>
+                <div class="hero-image-container">
+                     <!-- character image -->
+                    <img src="{{ url_for('static', filename='images/interview_ready_chr.png') }}" class="hero-image">
+                </div>
+            </div>
+            <!-- attribution line -->
+             <div class="hero-attribution">
+                made with <i class="fas fa-heart"></i> by <a href="http://ritikdutta.com" target="_blank" rel="noopener noreferrer">Ritik Dutta</a>
+             </div>
+        </section>
+
+        <!-- ========= problem/solution section ========= -->
+        <section id="problem-solution" class="section section-light fade-in-section">
+            <div class="container">
+                 <div class="problem-solution">
+                    <div>
+                        <i class="fas fa-comments-dollar icon"></i>
+                        <h3>the challenge</h3>
+                        <p>Interview anxiety? Feeling unprepared? Many struggle with confidence and practice, especially in intimidating mock interviews. Effective preparation is often hard to come by.</p>
+                    </div>
+                     <div>
+                        <i class="fas fa-robot icon"></i>
+                        <h3>our AI solution</h3>
+                        <p>Interview Ready provides a non-judgmental, AI-powered space to practice. Get tailored questions, instant feedback, and intelligent scoring to build skills and confidence comfortably.</p>
+                    </div>
+                 </div>
+            </div>
+        </section>
+
+        <!-- ========= how it works section ========= -->
+        <section id="how-it-works" class="section section-dark fade-in-section">
+            <div class="container">
+                <h2>How Interview Ready Works</h2>
+                <div class="how-it-works-steps">
+                    <div class="step">
+                        <div class="step-icon"><i class="fas fa-map-signs"></i></div>
+                        <h3>1. select domain</h3>
+                        <p>Choose your job field (IT, Management, Civil Services, etc.) to tailor the practice session.</p>
+                    </div>
+                    <div class="step">
+                        <div class="step-icon"><i class="fas fa-file-alt"></i></div>
+                        <h3>2. add resume (optional)</h3>
+                        <p>Upload your CV for highly personalized questions based on your experience (or skip this step).</p>
+                    </div>
+                    <div class="step">
+                        <div class="step-icon"><i class="fas fa-microphone-alt"></i></div>
+                        <h3>3. practice & respond</h3>
+                        <p>Engage in a mock interview with our AI, answering domain-specific questions.</p>
+                    </div>
+                    <div class="step">
+                         <div class="step-icon"><i class="fas fa-chart-line"></i></div>
+                        <h3>4. get feedback & score</h3>
+                        <p>Receive instant, constructive feedback and an intelligent score (out of 10) for each answer.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ========= features section ========= -->
+        <section id="features" class="section section-light fade-in-section">
+            <div class="container">
+                <h2>Key Features</h2>
+                <div class="features-grid">
+                    <div class="feature-card">
+                         <i class="fas fa-brain feature-icon"></i>
+                        <div>
+                            <h3>ai-powered mock interviews</h3>
+                            <p>Tailored questions and insightful feedback based on your domain and CV.</p>
+                        </div>
+                    </div>
+                    <div class="feature-card">
+                         <i class="fas fa-user-cog feature-icon"></i>
+                        <div>
+                            <h3>personalized experience</h3>
+                            <p>Customize interviewer gender and language (English/Hindi) for comfortable practice.</p>
+                        </div>
+                    </div>
+                    <div class="feature-card">
+                        <i class="fas fa-star-half-alt feature-icon"></i>
+                        <div>
+                            <h3>intelligent scoring</h3>
+                            <p>Get scored out of 10, with smart handling for non-applicable scenarios.</p>
+                        </div>
+                    </div>
+                     <div class="feature-card">
+                         <i class="fas fa-shield-alt feature-icon"></i>
+                        <div>
+                            <h3>high-level security</h3>
+                            <p>Secure Google Authentication and robust session management protect your data.</p>
+                        </div>
+                    </div>
+                    <div class="feature-card">
+                        <i class="fas fa-briefcase feature-icon"></i>
+                        <div>
+                            <h3>real interview simulation</h3>
+                            <p>Practice realistic scenarios across various domains like IT, Business, Psychology, etc.</p>
+                        </div>
+                    </div>
+                    <div class="feature-card">
+                        <i class="fas fa-tasks feature-icon"></i>
+                        <div>
+                            <h3>progress tracking</h3>
+                            <p>Save your progress and visualize your improvement over time.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+         <!-- ========= technology section ========= -->
+        <section id="tech-stack" class="section section-dark fade-in-section">
+            <div class="container">
+                <h2>Built with Leading Technology</h2>
+                <p style="text-align: center; max-width: 700px; margin: 0 auto 3rem auto;">We leverage robust and scalable technologies to provide a seamless and intelligent experience.</p>
+                <div class="tech-stack-logos">
+                    <div class="tech-logo">
+                        <i class="fab fa-python"></i> <!-- representing python/ai -->
+                         <span>OpenAI Models</span>
+                    </div>
+                    <div class="tech-logo">
+                        <i class="fas fa-database"></i> <!-- representing firestore -->
+                        <span>Firebase Firestore</span>
+                    </div>
+                     <div class="tech-logo">
+                        <i class="fab fa-google"></i> <!-- representing google auth -->
+                        <span>Google Auth</span>
+                    </div>
+                     <div class="tech-logo">
+                        <i class="fas fa-cloud"></i> <!-- generic cloud icon -->
+                        <span>Google Cloud</span>
+                    </div>
+                    <!-- add more logos if needed -->
+                </div>
+            </div>
+        </section>
+
+        <!-- ========= call to action section ========= -->
+        <section id="get-started" class="section section-gradient cta-section fade-in-section"> <!-- added id here -->
+            <div class="container">
+                <h2>Ready to Ace Your Next Interview?</h2>
+                <p>Stop worrying and start preparing with your AI Interview Coach. Gain the confidence and skills you need to succeed.</p>
+                 <!-- link to app/signup -->
+                <a href="login" class="button button-primary" style="background-color: var(--white-color); color: var(--primary-dark);">start practicing for free</a>
+            </div>
+        </section>
+
+    </main>
+
+    <footer class="main-footer">
+         <div class="footer-socials">
+            <!-- replace # with your actual profile links -->
+            <a href="#" target="_blank" rel="noopener noreferrer" aria-label="GitHub Profile"><i class="fab fa-github"></i></a>
+            <a href="#" target="_blank" rel="noopener noreferrer" aria-label="LinkedIn Profile"><i class="fab fa-linkedin"></i></a>
+            <a href="#" target="_blank" rel="noopener noreferrer" aria-label="Twitter Profile"><i class="fab fa-twitter"></i></a>
+        </div>
+    </footer>
+
+    <script>
+        // --- simple mobile menu toggle ---
+        const menuToggle = document.getElementById('menuToggle');
+        const mainNav = document.getElementById('mainNav');
+
+        menuToggle.addEventListener('click', () => {
+            mainNav.classList.toggle('active');
+            // icon swap for the menu button
+            const icon = menuToggle.querySelector('i');
+            if (mainNav.classList.contains('active')) {
+                icon.classList.remove('fa-bars');
+                icon.classList.add('fa-times');
+            } else {
+                icon.classList.remove('fa-times');
+                icon.classList.add('fa-bars');
+            }
+        });
+
+        // close menu if a nav link is clicked
+        mainNav.querySelectorAll('a').forEach(link => {
+            link.addEventListener('click', () => {
+                 if (mainNav.classList.contains('active')) {
+                    mainNav.classList.remove('active');
+                     menuToggle.querySelector('i').classList.remove('fa-times');
+                     menuToggle.querySelector('i').classList.add('fa-bars');
+                 }
+            });
+        });
+
+        // --- fade-in animation on scroll ---
+        const sections = document.querySelectorAll('.fade-in-section');
+
+        // this watches for elements entering the screen
+        const observer = new IntersectionObserver((entries, observer) => {
+            entries.forEach(entry => {
+                // if the element is on screen, add the 'visible' class
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('visible');
+                    // observer.unobserve(entry.target); // this stops the animation from repeating
+                }
+                 // else {
+                 //    entry.target.classList.remove('visible'); // this makes elements fade out when scrolled away
+                 // }
+            });
+        }, { threshold: 0.1 }); // percentage of element visible to trigger
+
+        // tell the observer to watch each section
+        sections.forEach(section => {
+            observer.observe(section);
+        });
+
+    </script>
+
 </body>
 </html>
-
