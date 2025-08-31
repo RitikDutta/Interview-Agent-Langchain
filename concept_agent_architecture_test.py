@@ -188,7 +188,10 @@ def gate_is_new_user(state: State) -> dict:
 def route_is_new_user(state: State) -> Literal["new_user", "existing_user"]:
     if "is_new_user" in state:
         flag = bool(state["is_new_user"])
-        logger.thinking("route_is_new_user: flag=%s", flag)
+        if flag:
+            logger.thinking("New user flag detected; proceeding with first-time setup")
+        else:
+            logger.thinking("Found an existing user in database; skipping initialization")
         return "new_user" if flag else "existing_user"
     # heuristic fallback (optional)
     first = ""
@@ -198,7 +201,7 @@ def route_is_new_user(state: State) -> Literal["new_user", "existing_user"]:
             first = (m.get("content") or "").lower()
             break
     newbie = any(kw in first for kw in ("start", "new user", "first time", "setup"))
-    logger.thinking("route_is_new_user inferred_new=%s", newbie)
+    logger.thinking("Heuristic routing: %s user based on initial message", "new" if newbie else "existing")
     return "new_user" if newbie else "existing_user"
 
 def init_user(state: State) -> dict:
@@ -273,7 +276,7 @@ def get_domain(state: State) -> dict:
         return {"graph_state": "no_domain"}  # no domain key set
 
     logger.info(f"[get_domain] user_id={user_id} domain='{domain}'")
-    logger.thinking("Captured domain input → %s", domain)
+    logger.thinking("Captured domain preference: %s", domain)
     return {"graph_state": "have_domain", "domain": domain}
 
 def node_ask_resume(state: State) -> dict:
@@ -299,7 +302,7 @@ def get_resume_url(state: State) -> dict:
     # Normalize once
     try:
         kind, normalized = _normalize_resume_input(resume_value)
-        logger.thinking("Normalized resume input → kind=%s value_len=%d", kind, len(normalized or ""))
+        logger.thinking("Parsed resume source: kind=%s (len=%d)", kind, len(normalized or ""))
     except Exception as e:
         logger.warning(f"[get_resume_url] normalization error: {e} → continuing without resume")
         return {"graph_state": "no_resume_url"}

@@ -142,17 +142,17 @@ class StrategicQuestionRouter:
         scores = prof["scores"]
         # Internal reasoning log
         self.logger.thinking(
-            "Choosing strategy with scores_overall=%s skills=%d strengths=%d weaknesses=%d",
-            scores.get("score_overall"), len(prof.get("skills") or []), len(prof.get("strengths") or []), len(prof.get("weaknesses") or []),
+            "Assessing profile to select strategy (overall=%.2f, skills=%d, strengths=%d, weaknesses=%d)",
+            (scores.get("score_overall") or 0.0), len(prof.get("skills") or []), len(prof.get("strengths") or []), len(prof.get("weaknesses") or []),
         )
         if prof["weaknesses"]:
-            self.logger.thinking("Selecting 'weakness' strategy due to reported weaknesses")
+            self.logger.thinking("Choosing 'weakness' strategy — weaknesses present")
             return "weakness"
         if (scores.get("score_overall") or 0) < 4:
-            self.logger.thinking("Selecting 'scores' strategy due to low overall score")
+            self.logger.thinking("Choosing 'scores' strategy — low overall score")
             return "scores"
         if prof["skills"]:
-            self.logger.thinking("Selecting 'skills' strategy due to available skills")
+            self.logger.thinking("Choosing 'skills' strategy — skills available")
             return "skills"
         self.logger.thinking("Defaulting to 'strength' strategy")
         return "strength"
@@ -166,11 +166,11 @@ class StrategicQuestionRouter:
         # seed for skills strategy
         picked_skill = self._sample_skill(prof["skills"]) if strategy == "skills" else None
         if picked_skill:
-            self.logger.thinking("Sampled skill for bias: %s", picked_skill)
+            self.logger.thinking("Biasing retrieval towards skill: %s", picked_skill)
 
         # Produce a compact plan (structured output)
         chain = self.prompt | self.llm.with_structured_output(QueryPlan)
-        self.logger.thinking("Invoking LLM for plan: strategy=%s domain=%s skills=%d strengths=%d weaknesses=%d",
+        self.logger.thinking("Deriving retrieval plan (strategy=%s, domain=%s, skills=%d, strengths=%d, weaknesses=%d)",
                             strategy, prof["domain"] or "", len(prof["skills"]), len(prof["strengths"]), len(prof["weaknesses"]))
         plan = chain.invoke({
             "strategy": strategy,
@@ -212,7 +212,7 @@ class StrategicQuestionRouter:
 
         # Ensure the query is a topic (never a full question)
         plan.query = self._normalize_query_topic(plan.query)
-        self.logger.thinking("Planned topic='%s' diff=%s domain=%s skill=%s", plan.query, plan.difficulty, plan.domain, plan.skill)
+        self.logger.thinking("Planned topic '%s' (difficulty=%s, domain=%s, skill=%s)", plan.query, plan.difficulty, plan.domain, plan.skill)
         if not plan.query:
             # Fallback topic based on available signals
             base: Optional[str] = None

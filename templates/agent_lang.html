@@ -511,6 +511,13 @@
             margin-bottom: var(--spacing-xl);
         }
 
+        .section-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: var(--spacing-sm);
+        }
+
         .section-title {
             font-size: 1rem;
             font-weight: 600;
@@ -518,6 +525,30 @@
             margin-bottom: var(--spacing-md);
             padding-bottom: var(--spacing-sm);
             border-bottom: 2px solid var(--color-primary);
+        }
+
+        .thinking-indicator {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+            font-size: 0.85rem;
+            color: var(--color-text-light);
+        }
+        .thinking-indicator.active { color: var(--color-primary); }
+
+        /* improved typing/wave dots */
+        .dots-typing{ display:inline-flex; align-items:center; gap:4px; }
+        .dots-typing .dot{
+            width:6px; height:6px; border-radius:50%; background: currentColor;
+            opacity:.45; transform: translateY(0);
+            animation: dotBounce 1.2s infinite ease-in-out;
+        }
+        .dots-typing .dot:nth-child(1){ animation-delay: 0s; }
+        .dots-typing .dot:nth-child(2){ animation-delay: .15s; }
+        .dots-typing .dot:nth-child(3){ animation-delay: .30s; }
+        @keyframes dotBounce{
+            0%, 80%, 100% { transform: translateY(0); opacity:.45; }
+            40%           { transform: translateY(-5px); opacity:1; }
         }
 
         .log-container {
@@ -530,14 +561,22 @@
             font-family: 'Courier New', monospace;
             font-size: 0.75rem;
             line-height: 1.6;
+            /* Hide native scrollbars but keep scrollable */
+            -ms-overflow-style: none; /* IE and Edge */
+            scrollbar-width: none;     /* Firefox */
         }
+        .log-container::-webkit-scrollbar { display: none; }
 
         .log-item {
             margin-bottom: var(--spacing-sm);
             display: flex;
             align-items: flex-start;
             gap: var(--spacing-sm);
+            opacity: 0;
+            transform: translateY(6px);
+            transition: opacity .2s ease, transform .2s ease;
         }
+        .log-item.show { opacity: 1; transform: translateY(0); }
 
         .log-arrow {
             color: var(--color-primary);
@@ -694,11 +733,19 @@
     </style>
 </head>
 <body>
+    <script>
+      // Injected by Flask route /agent
+      window.AGENT_CONFIG = {
+        user_id: "{{ user_id or '' }}",
+        username: "{{ username or '' }}",
+        strategy: "{{ strategy or '' }}"
+      };
+    </script>
     <!-- top bar -->
     <header class="top-bar">
         <div class="meeting-info">
             <h1 class="meeting-title">AI Mock Interview</h1>
-            <span class="meeting-stage">Live Interview</span>
+            <span class="meeting-stage" id="meetingStage">Not Started</span>
         </div>
         <div class="meeting-stats">
             <span class="meeting-duration">
@@ -710,6 +757,12 @@
                 <span>2 participants</span>
             </span>
             <span class="current-time" id="current-time">5:00 PM</span>
+        </div>
+        <div class="meeting-controls">
+            <button class="enable-camera-btn" id="startInterviewBtn" title="Start Interview">
+                <i class="fas fa-play"></i>
+                Start Interview
+            </button>
         </div>
     </header>
 
@@ -801,7 +854,13 @@
             <div class="panel-content">
                 <!-- what the ai is doing behind the scenes -->
                 <div class="logs-section">
-                    <h3 class="section-title">Agent Process Log</h3>
+                    <div class="section-header">
+                        <h3 class="section-title">Agent Process Log</h3>
+                        <div class="thinking-indicator hidden" id="thinkingIndicator">
+                            <span class="dot-pulse" aria-hidden="true"></span>
+                            <span>Thinking</span>
+                        </div>
+                    </div>
                     <div class="log-container" id="agentLogs">
                         <div class="profile-empty">Agent activity will appear here...</div>
                     </div>
@@ -832,9 +891,15 @@
                 this.recognition = null;
                 this.synthesis = window.speechSynthesis;
                 this.lastAIResponse = '';
+                this.started = false;
                 
-                // unique ids for this interview session
-                this.userId = this.generateUserId();
+                // unique ids for this interview session (allow server-provided override)
+                const cfg = window.AGENT_CONFIG || {};
+                this.userId = (cfg.user_id && cfg.user_id.trim())
+                    ? cfg.user_id.trim()
+                    : ((cfg.username && cfg.username.trim()) ? cfg.username.trim() : this.generateUserId());
+                this.userName = (cfg.username || '').trim();
+                this.strategy = (cfg.strategy || 'scores').trim();
                 this.threadId = this.generateThreadId();
                 
                 this.initializeElements();
@@ -843,9 +908,6 @@
                 this.startTimer();
                 this.updateCurrentTime();
                 this.setupWebcam();
-                
-                // kick off the interview
-                this.sendMessage('<BEGIN_INTERVIEW>');
                 
                 console.log('AI Mock Interview App initialized', { userId: this.userId, threadId: this.threadId });
             }
@@ -883,6 +945,7 @@
                 // dashboard panels
                 this.agentLogs = document.getElementById('agentLogs');
                 this.profileDetails = document.getElementById('profileDetails');
+                this.thinkingIndicator = document.getElementById('thinkingIndicator');
                 
                 // clock and timer
                 this.durationElement = document.getElementById('duration');
@@ -890,6 +953,10 @@
                 
                 // mic icon on your video
                 this.userAudioIndicator = document.getElementById('userAudioIndicator');
+                
+                // top bar controls
+                this.startInterviewBtn = document.getElementById('startInterviewBtn');
+                this.meetingStageElement = document.getElementById('meetingStage');
             }
 
             initializeSpeechRecognition() {
@@ -956,8 +1023,36 @@
                     }
                 });
                 
-                // hang up button
+                // start + hang up buttons
+                if (this.startInterviewBtn) {
+                    this.startInterviewBtn.addEventListener('click', () => this.startInterview());
+                }
                 this.endCallBtn.addEventListener('click', () => this.endInterview());
+            }
+
+            setThinking(active) {
+                if (!this.thinkingIndicator) return;
+                if (active) {
+                    this.thinkingIndicator.classList.remove('hidden');
+                    this.thinkingIndicator.classList.add('active');
+                } else {
+                    this.thinkingIndicator.classList.remove('active');
+                    this.thinkingIndicator.classList.add('hidden');
+                }
+            }
+
+            async startInterview() {
+                if (this.started) return;
+                this.started = true;
+                if (this.meetingStageElement) this.meetingStageElement.textContent = 'Live Interview';
+                if (this.startInterviewBtn) {
+                    this.startInterviewBtn.disabled = true;
+                    this.startInterviewBtn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Starting...';
+                }
+                await this.sendMessage('<BEGIN_INTERVIEW>');
+                if (this.startInterviewBtn) {
+                    this.startInterviewBtn.innerHTML = '<i class="fas fa-check"></i> Started';
+                }
             }
 
             async setupWebcam() {
@@ -1111,6 +1206,10 @@
             sendCurrentMessage() {
                 const message = this.messageInput.value.trim();
                 if (message) {
+                    if (!this.started) {
+                        this.startInterview();
+                        return;
+                    }
                     this.sendMessage(message);
                     this.messageInput.value = '';
                 }
@@ -1125,6 +1224,7 @@
                 // show the "thinking..." spinner
                 this.messageInput.disabled = true;
                 this.loadingIndicator.classList.add('active');
+                this.setThinking(true);
                 this.clearAgentLogs();
                 this.hideQuestionOverlay();
                 
@@ -1137,7 +1237,9 @@
                         body: JSON.stringify({
                             user_id: this.userId,
                             thread_id: this.threadId,
-                            message: messageText
+                            message: messageText,
+                            username: this.userName,
+                            strategy: this.strategy
                         }),
                     });
                     
@@ -1172,6 +1274,7 @@
                 } finally {
                     this.messageInput.disabled = false;
                     this.loadingIndicator.classList.remove('active');
+                    this.setThinking(false);
                     this.messageInput.focus();
                 }
             }
@@ -1184,6 +1287,8 @@
                     case 'final_response':
                         this.lastAIResponse = event.content;
                         this.showQuestion(event.content);
+                        this.setThinking(false);
+                        this.addAgentLog('Question: ' + event.content);
                         this.updateProfile();
                         break;
                     case 'error':
@@ -1208,6 +1313,8 @@
                 }
                 
                 this.agentLogs.appendChild(logItem);
+                // animate in
+                requestAnimationFrame(() => { logItem.classList.add('show'); });
                 this.agentLogs.scrollTop = this.agentLogs.scrollHeight;
             }
 

@@ -240,7 +240,7 @@ def ingest_pdf(
     source_pdf = os.path.basename(pdf_path)
     pages = extract_pdf_blocks(pdf_path)
     logger.info(f"[INGEST] File: {source_pdf}  Pages with text: {len(pages)}")
-    logger.thinking("Segmenting pages into questions using LLM")
+    logger.thinking("Segmenting PDF pages into interview questions with LLM")
 
     seg_chain = get_segment_chain()
     candidates: List[Dict[str, Any]] = []
@@ -307,7 +307,7 @@ def ingest_pdf(
                    for t in seen_texts):
                 continue
             pruned.append(c); seen_texts.append(c["text"])
-        logger.thinking("Near-dup prune kept=%d from=%d", len(pruned), len(candidates))
+        logger.thinking("Near-duplicate pruning retained %d/%d questions", len(pruned), len(candidates))
         logger.info(f"[DEDUP] Kept after near-dup pruning: {len(pruned)} (from {len(candidates)})")
         candidates = pruned
 
@@ -317,7 +317,7 @@ def ingest_pdf(
 
     # Embed + upsert
     texts = [c["text"] for c in candidates]
-    logger.thinking("Embedding %d question texts", len(texts))
+    logger.thinking("Embedding %d question texts for vector search", len(texts))
     embeddings = embed_texts(oa, texts)
     batch, BATCH, total = [], 200, 0
     for c, vec in zip(candidates, embeddings):
@@ -454,7 +454,7 @@ def search_questions(
     if sparse_vec is not None:
         kwargs["sparse_vector"] = sparse_vec
 
-    logger.thinking("search mode=%s top_k=%d filter_keys=%s has_query=%s", mode, top_k, list((filt or {}).keys()), bool(query))
+    logger.thinking("Search intent: mode=%s, top_k=%d, filter_keys=%s, has_query=%s", mode, top_k, list((filt or {}).keys()), bool(query))
     res = index.query(**kwargs)
     matches = res.get("matches", []) if isinstance(res, dict) else res.matches
 
