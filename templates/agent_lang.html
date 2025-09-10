@@ -837,6 +837,10 @@
                     rows="1"
                 ></textarea>
                 
+                <button id="sendMessageBtn" class="control-button" title="Send">
+                    <i class="fas fa-paper-plane"></i>
+                </button>
+                
                 <button id="speechToTextBtn" class="control-button" title="Speech to Text">
                     <i class="fas fa-microphone"></i>
                 </button>
@@ -856,11 +860,6 @@
                 <button id="endCallBtn" class="control-button end-call" title="End Interview">
                     <i class="fas fa-phone-slash"></i>
                 </button>
-
-                <div class="loading-indicator" id="loadingIndicator">
-                    <div class="loading-spinner"></div>
-                    <span>AI is thinking...</span>
-                </div>
             </div>
         </div>
 
@@ -950,6 +949,7 @@
                 this.cameraToggleBtn = document.getElementById('cameraToggleBtn');
                 this.muteToggleBtn = document.getElementById('muteToggleBtn');
                 this.endCallBtn = document.getElementById('endCallBtn');
+                this.sendMessageBtn = document.getElementById('sendMessageBtn');
                 
                 // chat input and loading spinner
                 this.messageInput = document.getElementById('messageInput');
@@ -1032,6 +1032,7 @@
                 this.speechToTextBtn.addEventListener('click', () => this.toggleSpeechToText());
                 this.textToSpeechBtn.addEventListener('click', () => this.playTextToSpeech());
                 this.ttsButton.addEventListener('click', () => this.playTextToSpeech());
+                this.sendMessageBtn.addEventListener('click', () => this.sendCurrentMessage());
                 
                 // handle typing in the text box
                 this.messageInput.addEventListener('keypress', (e) => {
@@ -1242,7 +1243,8 @@
                 
                 // show the "thinking..." spinner
                 this.messageInput.disabled = true;
-                this.loadingIndicator.classList.add('active');
+                if (this.sendMessageBtn) this.sendMessageBtn.disabled = true;
+                if (this.loadingIndicator) this.loadingIndicator.classList.add('active');
                 this.setThinking(true);
                 this.clearAgentLogs();
                 this.hideQuestionOverlay();
@@ -1292,7 +1294,8 @@
                     this.showError('Connection error occurred. Please try again.');
                 } finally {
                     this.messageInput.disabled = false;
-                    this.loadingIndicator.classList.remove('active');
+                    if (this.sendMessageBtn) this.sendMessageBtn.disabled = false;
+                    if (this.loadingIndicator) this.loadingIndicator.classList.remove('active');
                     this.setThinking(false);
                     this.messageInput.focus();
                 }

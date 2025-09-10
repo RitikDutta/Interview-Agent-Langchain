@@ -6,14 +6,15 @@ from typing import Any, Dict, Optional
 
 from flask import Flask, jsonify, render_template, render_template_string, request
 import logging
+import os
 from threading import Thread
 from queue import Queue, Empty
-from log_utils import get_logger
+from interview_flow.logging import get_logger
 
 # Imports
-from relational_database import RelationalDB
-from vector_store import VectorStore
-from concept_agent_architecture_test import (
+from interview_flow.infra.rdb import RelationalDB
+from interview_flow.infra.vector_store import VectorStore
+from interview_flow import (
     get_current_state,
     start_thread,
     resume_thread,
@@ -39,6 +40,18 @@ def set_state_snapshot(user_id: str, state: Dict[str, Any]) -> None:
 def get_state_snapshot(user_id: str) -> Dict[str, Any]:
     """Return latest state, or {}."""
     return _STATE_CACHE.get(user_id, {})
+
+
+# -----------------------------------------------------------------------------
+# Index
+# -----------------------------------------------------------------------------
+@app.get("/")
+def index_page():
+    """Simple index with links to Agent UI and Monitor UI."""
+    default_user = os.getenv("Test_USER_ID") or os.getenv("TEST_USER_ID") or "test_user_022"
+    username = os.getenv("TEST_USERNAME") or default_user
+    strategy = os.getenv("TEST_STRATEGY") or "scores"
+    return render_template("index.html", user_id=default_user, username=username, strategy=strategy)
 
 # -----------------------------------------------------------------------------
 # Helpers
