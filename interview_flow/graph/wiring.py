@@ -2,8 +2,11 @@ from __future__ import annotations
 
 from typing import Any
 
+import os
+import sqlite3
 from langgraph.graph import StateGraph, START, END
 from langgraph.checkpoint.memory import InMemorySaver
+from langgraph.checkpoint.sqlite import SqliteSaver
 
 from ..schemas.state import State
 from ..logging import get_logger
@@ -100,6 +103,14 @@ def build_compiled_graph(*, rdb, vs, router, retriever, score_updater, llm, llm_
         {"continue": "query_question", "exit": END},
     )
 
-    checkpointer = InMemorySaver()
+    # Prefer persistent checkpointing across requests/process restarts.
+    # Configure path via LANGRAPH_CHECKPOINT_PATH, default to local sqlite file.
+    cp_path = os.getenv("LANGRAPH_CHECKPOINT_PATH") or os.path.join(os.getcwd(), "langgraph_checkpoints.sqlite")
+    try:
+        # Create a persistent SQLite connection and wrap it in SqliteSaver
+        conn = sqlite3.connect(cp_path, check_same_thread=False)
+        checkpointer = SqliteSaver(conn)
+    except Exception:
+        # Fallback to in-memory if sqlite is unavailable
+        checkpointer = InMemorySaver()
     return builder.compile(checkpointer=checkpointer)
-

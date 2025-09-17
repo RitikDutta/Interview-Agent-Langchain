@@ -76,7 +76,6 @@ def start_thread(thread_id: str, user_id: str, strategy: Optional[str] = None) -
         "user_id": user_id,
         "is_new_user": (not exists),
         "messages": [{"role": "user", "content": "start"}],
-        "should_continue": "exit",
     }
     if strategy:
         init_state["strategy"] = strategy

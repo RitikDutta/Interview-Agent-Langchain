@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from typing import Dict, Any, Literal
+from langgraph.types import interrupt
 
 from ...logging import get_logger
 
@@ -66,7 +67,23 @@ def make_init_user(*, rdb, vs):
 
 def gate_should_continue(state: Dict[str, Any]) -> dict:
     logger.debug("gate_should_continue")
-    return {"graph_state": "should_continue"}
+    choice = interrupt({
+        "prompt": (
+            "Would you like another question? Type 'continue' to proceed, or 'stop' to end."
+        )
+    })
+    # Normalize the user's choice after resume
+    if isinstance(choice, dict):
+        val = choice.get("choice") or choice.get("content") or ""
+    else:
+        val = str(choice or "")
+    v = (val or "").strip().lower()
+    if v in {"stop", "exit", "quit", "no", "n", "done"}:
+        norm = "exit"
+    else:
+        # Treat any other value (including blank) as continue to keep the interview flowing
+        norm = "continue"
+    return {"graph_state": "should_continue", "should_continue": norm}
 
 
 def route_should_continue(state: Dict[str, Any]) -> Literal["continue", "exit"]:
@@ -80,4 +97,3 @@ def route_should_continue(state: Dict[str, Any]) -> Literal["continue", "exit"]:
         return "exit"
     logger.info("[route_should_continue] → CONTINUE")
     return "continue"
-

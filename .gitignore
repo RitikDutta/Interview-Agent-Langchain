@@ -27,3 +27,6 @@ interview_questions_pdfs/DataScience3.pdf
 interview_questions_pdfs/DevOps fetched qquestions.pdf
 interview_questions_pdfs/DSA_interview_questin_level_1.pdf
 interview_questions_pdfs/gen_ai.pdf
+langgraph_checkpoints.sqlite
+langgraph_checkpoints.sqlite-shm
+langgraph_checkpoints.sqlite-wal

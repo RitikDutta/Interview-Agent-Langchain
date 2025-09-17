@@ -185,12 +185,24 @@
               
 
               <hr>
+              {% set started = (st|length) > 0 %}
               <div class="d-flex gap-2">
                 <input class="form-control" id="resumeInput" placeholder="Type reply to current prompt or value for interrupt...">
                 <button class="btn btn-success" id="sendBtn">Send</button>
-                <button class="btn btn-outline-primary" id="startBtn">Start</button>
+                {% if not started %}
+                  <button class="btn btn-outline-primary" id="startBtn">Start</button>
+                {% else %}
+                  <button class="btn btn-outline-success" id="continueBtn" title="Proceed to next question">Continue</button>
+                  <button class="btn btn-outline-danger" id="stopBtn" title="Stop after this turn">Stop</button>
+                {% endif %}
               </div>
-              <div class="form-text">Sends via LangGraph Command(resume=...). Use Start to initialize a new run.</div>
+              <div class="form-text">
+                {% if not started %}
+                  Click Start to initialize a new run for this user/thread.
+                {% else %}
+                  Use Continue after feedback to get the next question, or Stop to end.
+                {% endif %}
+              </div>
             </div>
           </div>
         </div>
@@ -219,15 +231,17 @@
         return await res.json();
       }
 
-      document.getElementById('startBtn').onclick = async () => {
-        const btn = document.getElementById('startBtn');
-        btn.disabled = true; btn.innerText = 'Starting...';
-        try {
-          const data = await api(`/monitor/graph/${USER_ID}/start`, {strategy: 'scores'});
-          console.log('start:', data);
-          location.reload();
-        } catch(e){ alert('Start failed: '+e.message); }
-      };
+      const startBtn = document.getElementById('startBtn');
+      if (startBtn) {
+        startBtn.onclick = async () => {
+          startBtn.disabled = true; startBtn.innerText = 'Starting...';
+          try {
+            const data = await api(`/monitor/graph/${USER_ID}/start`, {strategy: 'scores'});
+            console.log('start:', data);
+            location.reload();
+          } catch(e){ alert('Start failed: '+e.message); }
+        };
+      }
 
       document.getElementById('sendBtn').onclick = async () => {
         const el = document.getElementById('resumeInput');
@@ -242,6 +256,30 @@
           location.reload();
         } catch(e){ alert('Send failed: '+e.message); }
       };
+
+      // Continue/Stop handlers only when present
+      const contBtn = document.getElementById('continueBtn');
+      if (contBtn) {
+        contBtn.onclick = async () => {
+          contBtn.disabled = true; contBtn.innerText = 'Continuing...';
+          try {
+            const data = await api(`/monitor/graph/${USER_ID}/resume`, {value: 'continue'});
+            console.log('continue:', data);
+            location.reload();
+          } catch(e){ alert('Continue failed: '+e.message); }
+        };
+      }
+      const stopBtn = document.getElementById('stopBtn');
+      if (stopBtn) {
+        stopBtn.onclick = async () => {
+          stopBtn.disabled = true; stopBtn.innerText = 'Stopping...';
+          try {
+            const data = await api(`/monitor/graph/${USER_ID}/resume`, {value: 'stop'});
+            console.log('stop:', data);
+            location.reload();
+          } catch(e){ alert('Stop failed: '+e.message); }
+        };
+      }
 
       // Dark mode preference
       const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
