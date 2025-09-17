@@ -78,3 +78,54 @@ def _build_sparse_from_text(text: str) -> Dict[str, List[float]]:
         return {"indices": [], "values": []}
     return {"indices": list(range(len(tokens))), "values": [1.0] * len(tokens)}
 
+
+# ----------------- Canonicalization (via vector store) -----------------
+def canonicalize_domain(label: Optional[str]) -> Optional[str]:
+    """Return a canonical domain label for a user-provided string.
+
+    Tries vector-store lookup first (Pinecone index via interview_flow.normalization.canonical_normalizer),
+    then falls back to sanitized snake_case if vector lookup is unavailable or returns nothing.
+
+    Example: "Data Scientist", "data science", "DATA Science" -> "data_science"
+    """
+    if not label:
+        return None
+    raw = str(label).strip()
+    if not raw:
+        return None
+    try:
+        # Lazy import to avoid hard dependency when env is not configured
+        from interview_flow.normalization.canonical_normalizer import search_domains_first
+        res = search_domains_first(raw)
+        if res and res.get("canonical"):
+            return str(res["canonical"]).strip()
+    except Exception:
+        # fall back silently
+        pass
+    return "_" + sanitize_label(raw, "misc")
+
+
+def canonicalize_skill(label: Optional[str]) -> Optional[str]:
+    """Return a canonical skill label for a user-provided string.
+
+    Uses the same vector-store canonicalizer as domains, but queries the
+    skills namespace. Falls back to sanitized snake_case if unavailable.
+    """
+    if not label:
+        return None
+    raw = str(label).strip()
+    if not raw:
+        return None
+    try:
+        from interview_flow.normalization.canonical_normalizer import search_skills_first
+        res = search_skills_first(raw)
+        if res and res.get("canonical"):
+            return str(res["canonical"]).strip()
+    except Exception:
+        pass
+    return sanitize_label(raw, "misc")
+
+
+if __name__ == "__main__":
+    cano = canonicalize_domain("Data Scientist")
+    print(f"Cano: {cano}")

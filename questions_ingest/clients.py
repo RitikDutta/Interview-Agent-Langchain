@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import os
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Callable
 
 from dotenv import load_dotenv
 from openai import OpenAI
@@ -17,7 +17,12 @@ def get_openai_client() -> OpenAI:
     return OpenAI(api_key=api_key)
 
 
-def embed_texts(client: OpenAI, texts: List[str], model: str = "text-embedding-3-small") -> List[List[float]]:
+def embed_texts(
+    client: OpenAI,
+    texts: List[str],
+    model: str = "text-embedding-3-small",
+    progress: Optional[Callable[[int, int], None]] = None,
+) -> List[List[float]]:
     if not texts:
         return []
     vectors: List[List[float]] = []
@@ -26,6 +31,12 @@ def embed_texts(client: OpenAI, texts: List[str], model: str = "text-embedding-3
         sl = texts[i:i + BATCH]
         resp = client.embeddings.create(model=model, input=sl)
         vectors.extend([d.embedding for d in resp.data])
+        if progress:
+            try:
+                done = min(i + len(sl), len(texts))
+                progress(done, len(texts))
+            except Exception:
+                pass
     return vectors
 
 
@@ -60,4 +71,3 @@ def upsert_to_pinecone(index, items: List[Dict[str, Any]], namespace: Optional[s
         return
     vectors = [(it["id"], it["embedding"], it.get("metadata", {})) for it in items]
     index.upsert(vectors=vectors, namespace=namespace)
-

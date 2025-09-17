@@ -12,6 +12,17 @@ from ...utils.paths import _normalize_resume_input
 logger = get_logger("agent.flow")
 
 
+def _sanitize_label(s: str) -> str:
+    try:
+        import re
+        s = (s or "").strip().lower()
+        s = re.sub(r"[^a-z0-9]+", "_", s)
+        s = re.sub(r"_+", "_", s).strip("_")
+        return s or "misc"
+    except Exception:
+        return (s or "misc").strip().lower() or "misc"
+
+
 def node_ask_domain(state: Dict[str, Any]) -> dict:
     logger.debug("node_ask_domain")
     return {"graph_state": "ask_domain"}
@@ -31,9 +42,27 @@ def node_get_domain(state: Dict[str, Any]) -> dict:
     if domain.lower() in {"skip", "no", "later", ""}:
         logger.info("[get_domain] user skipped providing domain")
         return {"graph_state": "no_domain"}
-    logger.info(f"[get_domain] user_id={user_id} domain='{domain}'")
-    logger.thinking("Captured domain preference: %s", domain)
-    return {"graph_state": "have_domain", "domain": domain}
+    logger.info(f"[domain] Received from user user_id={user_id}: '{domain}'")
+
+    # Try to canonicalize via vector store; fall back to sanitized snake_case
+    canonical = None
+    try:
+        from ...normalization.canonical_normalizer import search_domains_first
+        hit = search_domains_first(domain)
+        canonical = (hit or {}).get("canonical") if hit else None
+        if canonical:
+            logger.info(f"[domain] Canonicalized name is '{canonical}'")
+        else:
+            fallback = _sanitize_label(domain)
+            logger.info(f"[domain] Using default sanitized form (not found in database): '{fallback}'")
+            canonical = fallback
+    except Exception as e:
+        fallback = _sanitize_label(domain)
+        logger.warning(f"[domain] Canonicalization error ({e}); using sanitized fallback '{fallback}'")
+        canonical = fallback
+
+    logger.thinking("Captured domain preference (normalized): %s", canonical)
+    return {"graph_state": "have_domain", "domain": canonical}
 
 
 def node_ask_resume(state: Dict[str, Any]) -> dict:
@@ -73,4 +102,3 @@ def node_get_resume_url(state: Dict[str, Any]) -> dict:
 def is_resume_url(state: Dict[str, Any]) -> Literal["resume_is_present", "resume_is_not_present"]:
     has_source = bool((state.get("resume_url") or "").strip())
     return "resume_is_present" if has_source else "resume_is_not_present"
-

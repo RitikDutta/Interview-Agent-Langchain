@@ -11,6 +11,7 @@ from .utils import (
     sanitize_label,
     content_hash,
     pinecone_clean_meta,
+    canonicalize_domain,
 )
 from .segment import extract_pdf_blocks, get_segment_chain, segment_page_into_questions
 from .clients import get_openai_client, embed_texts, ensure_pinecone_index, upsert_to_pinecone
@@ -47,6 +48,8 @@ def ingest_pdf(
     near_dup_sim: Optional[float] = None,
     skills_taxonomy_path: Optional[str] = None,   # ignored (legacy)
     domains_taxonomy_path: Optional[str] = None,  # ignored (legacy)
+    confirm_before_upsert: bool = False,
+    base_domain: Optional[str] = None,
 ):
     index_name = index_name or os.getenv("PINECONE_INDEX_NAME", "interview_questions")
     index = ensure_pinecone_index(index_name=index_name, dimension=1536, metric="cosine")
@@ -56,19 +59,51 @@ def ingest_pdf(
 
     source_pdf = os.path.basename(pdf_path)
     pages = extract_pdf_blocks(pdf_path)
-    logger.info(f"[INGEST] File: {source_pdf}  Pages with text: {len(pages)}")
+    total_pages = len(pages)
+    logger.info(f"[INGEST] File: {source_pdf}  Pages with text: {total_pages}")
     logger.thinking("Segmenting PDF pages into interview questions with LLM")
 
-    seg_chain = get_segment_chain()
+    # Canonicalize base domain (vector store → fallback snake_case) with logs
+    base_domain_canon = None
+    if base_domain and str(base_domain).strip():
+        logger.info(f"[INGEST] Received base domain from user: '{base_domain}'")
+        logger.info("[INGEST] Checking vector store for canonical form…")
+        try:
+            from interview_flow.normalization.canonical_normalizer import search_domains_first
+            hit = search_domains_first(base_domain)
+            if hit and hit.get("canonical"):
+                base_domain_canon = str(hit["canonical"]).strip()
+                logger.info(f"[INGEST] Using canonicalized form: '{base_domain_canon}'")
+            else:
+                fallback = sanitize_label(str(base_domain), "misc")
+                base_domain_canon = fallback
+                logger.info(f"[INGEST] Not found in vector store — using sanitized form: '{fallback}'")
+        except Exception as e:
+            fallback = sanitize_label(str(base_domain), "misc")
+            base_domain_canon = fallback
+            logger.warning(f"[INGEST] Canonicalization error ({e}); using sanitized fallback: '{fallback}'")
+    seg_chain = get_segment_chain(base_domain=base_domain_canon)
     candidates: List[Dict[str, Any]] = []
     seen_hashes = set()
 
-    for p in pages:
+    total_found = 0
+    for idx, p in enumerate(pages, start=1):
+        logger.info(f"[SEGMENT] Page {idx}/{total_pages}…")
         items = segment_page_into_questions(seg_chain, p["text"])
         if not items:
+            logger.debug("[SEGMENT] Page %d → 0 candidates", idx)
             continue
 
+        before = len(items)
         items = _clean_batch(items)
+
+        # If a base domain is provided, default missing/unknown domains to it
+        if base_domain_canon and str(base_domain_canon).strip():
+            bd = sanitize_label(str(base_domain_canon), "misc")
+            for it in items:
+                if not it.domain or str(it.domain).strip() in {"", "misc"}:
+                    it.domain = bd
+        after = len(items)
 
         # Batch canonicalization per page to reduce API calls
         def _key(s: str) -> str:
@@ -98,6 +133,7 @@ def ingest_pdf(
         smap = {_key(lbl): (hit or {}) for lbl, hit in zip(uniq_skills_order, skill_hits)}
         dmap = {_key(lbl): (hit or {}) for lbl, hit in zip(uniq_domains_order, domain_hits)}
 
+        added_this_page = 0
         for it in items:
             qtext = it.question_text.strip()
             h = content_hash(qtext)
@@ -144,6 +180,10 @@ def ingest_pdf(
                 "text": qtext,
                 "metadata": meta,
             })
+            added_this_page += 1
+
+        total_found += added_this_page
+        logger.info(f"[SEGMENT] Page {idx} → raw={before} cleaned={after} added={added_this_page} total={total_found}")
 
     logger.info(f"[SEGMENT] Found unique questions: {len(candidates)}")
 
@@ -164,9 +204,34 @@ def ingest_pdf(
         logger.warning("[EXIT] No candidates to embed/upsert.")
         return
 
+    # Optional interactive confirmation before embedding/upsert
+    if confirm_before_upsert:
+        try:
+            print("\n===== Preview Extracted Questions =====")
+            for i, c in enumerate(candidates, start=1):
+                md = c.get("metadata", {}) or {}
+                print(
+                    f"{i:3}. {c.get('text','').strip()}\n"
+                    f"     id={c.get('id')} | skill={md.get('skill')} | subskill={md.get('subskill')} | "
+                    f"domain={md.get('domain')} | diff={md.get('difficulty')} | page={md.get('page')} "
+                )
+            print("===== End Preview =====\n")
+            ans = input("Proceed to embed and upsert to vector DB? [y/N]: ").strip().lower()
+            if ans not in {"y", "yes"}:
+                logger.info("[ABORT] User declined to proceed. No embeddings/upserts performed.")
+                return
+        except Exception as e:
+            logger.warning(f"[CONFIRM] Could not get confirmation ({e}); aborting without upsert.")
+            return
+
     texts = [c["text"] for c in candidates]
     logger.thinking("Embedding %d question texts for vector search", len(texts))
-    embeddings = embed_texts(oa, texts)
+
+    def _progress(done: int, total: int):
+        pct = int(done * 100 / max(1, total))
+        logger.info(f"[EMBED] {done}/{total} ({pct}%)")
+
+    embeddings = embed_texts(oa, texts, progress=_progress)
     batch, BATCH, total = [], 200, 0
     for c, vec in zip(candidates, embeddings):
         batch.append({"id": c["id"], "embedding": vec, "metadata": c["metadata"]})
