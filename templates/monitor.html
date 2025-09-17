@@ -33,6 +33,7 @@
               {% set prof = data.rdb.profile or {} %}
               <div class="mb-2"><b>Name:</b> {{ prof.name or "—" }}</div>
               <div class="mb-2"><b>Domain:</b> <span class="badge bg-info-subtle text-info-emphasis">{{ prof.domain or "—" }}</span></div>
+              <div class="mb-2"><b>Thread ID:</b> <code>{{ prof.thread_id or "—" }}</code></div>
               <div class="mb-2"><b>Updated:</b> {{ prof.updated_at or "—" }}</div>
 
               <div class="mb-2"><b>Skills:</b><br>
