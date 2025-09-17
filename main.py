@@ -396,16 +396,33 @@ def langraph():
 
 @app.route("/chat", methods=["POST"])
 def chat():
-    """API endpoint to handle streaming chat messages using Server-Sent Events."""
-    data = request.json
+    """API endpoint to handle streaming chat messages using Server-Sent Events.
+    If no thread_id is provided, attempts to fetch it from the relational DB
+    and falls back to using user_id as the thread_id.
+    """
+    data = request.json or {}
     user_id = data.get("user_id")
-    thread_id = data.get("thread_id")
     user_message = data.get("message")
 
-    if not all([user_id, thread_id, user_message]):
-        return jsonify({"error": "Missing user_id, thread_id, or message"}), 400
+    # Resolve thread_id: prefer provided one, else look up from RDB, else fallback to user_id
+    thread_id = (data.get("thread_id") or "").strip() if isinstance(data.get("thread_id"), str) else data.get("thread_id")
+    if not thread_id and user_id:
+        try:
+            from interview_flow.infra.rdb import RelationalDB  # Local import to avoid import-time env failures
+            _rdb = RelationalDB()
+            looked_up = _rdb.get_user_thread_id(user_id)
+            if looked_up:
+                thread_id = looked_up
+        except Exception:
+            # If DB not configured or any error occurs, silently fall back
+            pass
+    if not thread_id and user_id:
+        thread_id = user_id
 
-    print(f"Streaming response for user '{user_id}': {user_message}")
+    if not all([user_id, user_message]):
+        return jsonify({"error": "Missing user_id or message"}), 400
+
+    print(f"Streaming response for user '{user_id}' (thread '{thread_id}') : {user_message}")
 
     # This generator function will stream data to the client
     def generate():
