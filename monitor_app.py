@@ -19,6 +19,7 @@ from interview_flow import (
     start_thread,
     resume_thread,
 )
+from interview_flow.threads import ThreadService
 
 app = Flask(__name__)
 logger = get_logger("monitor")
@@ -26,12 +27,14 @@ logger = get_logger("monitor")
 # Create clients. Requires env vars.
 rdb = RelationalDB()
 vdb = VectorStore()
+threads = ThreadService(rdb)
 
 # -----------------------------------------------------------------------------
 # Runtime state cache (in-process).
 # Updated by the LangGraph loop.
 # -----------------------------------------------------------------------------
 _STATE_CACHE: dict[str, dict] = {}
+
 
 def set_state_snapshot(user_id: str, state: Dict[str, Any]) -> None:
     """Register the latest runtime state for a user."""
@@ -85,6 +88,7 @@ def fetch_all(user_id: str) -> Dict[str, Any]:
 
     data = {
         "user_id": user_id,
+        "thread_id": rdb_profile.get("thread_id"),
         "rdb": {
             "profile": rdb_profile,
             "scores": rdb_scores,
@@ -128,6 +132,10 @@ def _sse(data: dict) -> str:
     return "data: " + json.dumps(data) + "\n\n"
 
 
+def _resolve_thread_id(user_id: str, provided: Optional[str]) -> str:
+    return threads.resolve_thread_id(user_id, provided)
+
+
 @app.post("/chat")
 def chat_sse():
     """
@@ -136,7 +144,7 @@ def chat_sse():
     """
     body = request.get_json(silent=True) or {}
     user_id = str(body.get("user_id") or "").strip() or "guest_user"
-    thread_id = str(body.get("thread_id") or user_id)
+    thread_id = _resolve_thread_id(user_id, body.get("thread_id"))
     message = str(body.get("message") or "").strip()
     username = (body.get("username") or "").strip()
     strategy = (body.get("strategy") or "scores").strip() or "scores"
@@ -169,7 +177,8 @@ def chat_sse():
             try:
                 if message == "<BEGIN_INTERVIEW>":
                     q.put({"type": "status", "content": "Starting interview session…"})
-                    out = start_thread(thread_id=thread_id, user_id=user_id, strategy=strategy)
+                    res = threads.start(user_id=user_id, thread_id=thread_id, strategy=strategy, username=username)
+                    out = res.get("out", {})
                     try:
                         if username:
                             rdb.upsert_user(user_id=user_id, name=username)
@@ -177,7 +186,8 @@ def chat_sse():
                         pass
                 else:
                     q.put({"type": "status", "content": "Processing your input…"})
-                    out = resume_thread(thread_id=thread_id, value=message)
+                    res = threads.resume(user_id=user_id, content=message, thread_id=thread_id)
+                    out = res.get("out", {})
 
                 state = get_current_state(thread_id)
                 set_state_snapshot(user_id, state)
@@ -253,6 +263,66 @@ def chat_sse():
     resp.headers["Cache-Control"] = "no-cache"
     resp.headers["X-Accel-Buffering"] = "no"
     return resp
+
+
+@app.get("/monitor/api/conversation/<user_id>.json")
+def api_conversation(user_id: str):
+    """Return conversation history for a user's thread as JSON.
+    Query params: thread_id (optional). Defaults to stored thread_id or user_id.
+    """
+    tid = _resolve_thread_id(user_id, request.args.get("thread_id"))
+    data = threads.get_conversation(thread_id=tid)
+    return jsonify({"user_id": user_id, **data})
+
+
+@app.get("/monitor/conversation/<user_id>")
+def conversation_view(user_id: str):
+    """Simple HTML view of a conversation for a user's thread.
+    Query params: thread_id (optional)
+    """
+    tid = _resolve_thread_id(user_id, request.args.get("thread_id"))
+    msgs = threads.get_conversation(thread_id=tid).get("messages") or []
+    return render_template_string(
+        r"""
+<!doctype html>
+<html lang="en" data-bs-theme="dark">
+  <head>
+    <meta charset="utf-8">
+    <title>Conversation • {{ user_id }} • {{ thread_id }}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous">
+    <style>
+      body{ padding:24px; }
+      .bubble{ border-radius: 12px; padding: 10px 14px; margin: 6px 0; max-width: 80%; }
+      .user{ background: #0d6efd22; border: 1px solid #0d6efd55; margin-left:auto; }
+      .assistant{ background: #19875422; border: 1px solid #19875455; }
+      .ts{ font-size:.75rem; color:#aaa; }
+      code{ background: rgba(255,255,255,.08); padding:.1rem .35rem; border-radius: .25rem; }
+    </style>
+  </head>
+  <body>
+    <div class="container-xxl">
+      <h1 class="h5">Conversation — <span class="text-info">{{ user_id }}</span> <small class="text-secondary">(<code>{{ thread_id }}</code>)</small></h1>
+      <div class="mt-3">
+        {% for m in messages %}
+          <div class="bubble {{ 'user' if m.role=='user' else 'assistant' }}">
+            <div class="small text-secondary">{{ m.role|capitalize }} <span class="ts">{{ m.ts }}</span></div>
+            <div>{{ m.content }}</div>
+          </div>
+        {% else %}
+          <div class="text-secondary">No messages yet for this thread.</div>
+        {% endfor %}
+      </div>
+      <hr class="my-4">
+      <div class="text-secondary small">Source: in‑memory log. Use the JSON API at <code>/monitor/api/conversation/{{ user_id }}.json?thread_id={{ thread_id }}</code></div>
+    </div>
+  </body>
+</html>
+        """,
+        user_id=user_id,
+        thread_id=tid,
+        messages=msgs,
+    )
 
 
 @app.get("/get_profile")
@@ -538,11 +608,12 @@ def post_state(user_id: str):
 @app.post("/monitor/graph/<user_id>/start")
 def graph_start(user_id: str):
     body = request.get_json(silent=True) or {}
-    thread_id = request.args.get("thread_id") or body.get("thread_id") or user_id
+    thread_id = _resolve_thread_id(user_id, request.args.get("thread_id") or body.get("thread_id"))
     strategy = body.get("strategy") or "scores"
     logger.info(f"POST /monitor/graph/{user_id}/start thread_id={thread_id} strategy={strategy}")
-    out = start_thread(thread_id=thread_id, user_id=user_id, strategy=strategy)
-    state = get_current_state(thread_id)
+    res = threads.start(user_id=user_id, thread_id=thread_id, strategy=strategy)
+    out = res.get("out", {})
+    state = res.get("state", {})
     set_state_snapshot(user_id, state)
     return jsonify({
         "ok": True,
@@ -555,11 +626,12 @@ def graph_start(user_id: str):
 @app.post("/monitor/graph/<user_id>/resume")
 def graph_resume(user_id: str):
     body = request.get_json(silent=True) or {}
-    thread_id = request.args.get("thread_id") or body.get("thread_id") or user_id
+    thread_id = _resolve_thread_id(user_id, request.args.get("thread_id") or body.get("thread_id"))
     value = body.get("value") if "value" in body else (body.get("content") or body)
     logger.info(f"POST /monitor/graph/{user_id}/resume thread_id={thread_id}")
-    out = resume_thread(thread_id=thread_id, value=value)
-    state = get_current_state(thread_id)
+    res = threads.resume(user_id=user_id, content=value, thread_id=thread_id)
+    out = res.get("out", {})
+    state = res.get("state", {})
     set_state_snapshot(user_id, state)
     return jsonify({
         "ok": True,
