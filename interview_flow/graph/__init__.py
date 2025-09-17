@@ -81,6 +81,11 @@ def start_thread(thread_id: str, user_id: str, strategy: Optional[str] = None) -
     if strategy:
         init_state["strategy"] = strategy
     out = _graph.invoke(init_state, config=get_thread_config(thread_id))  # type: ignore
+    # Persist the mapping between user and thread in the relational DB
+    try:
+        _rdb.set_user_thread_id(user_id=user_id, thread_id=thread_id)  # type: ignore
+    except Exception as e:
+        logger.warning(f"Could not persist thread_id for user_id={user_id}: {e}")
     return out if isinstance(out, dict) else {}
 
 

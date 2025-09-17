@@ -3,6 +3,7 @@
 import os
 import json
 from typing import Optional, List, Dict, Any
+from datetime import datetime
 
 import mysql.connector
 from mysql.connector import pooling, Error
@@ -82,11 +83,25 @@ class RelationalDB:
         ) ENGINE=InnoDB;
         """
 
+        create_conversation = """
+        CREATE TABLE IF NOT EXISTS conversation_logs (
+            id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            thread_id VARCHAR(255) NOT NULL,
+            user_id VARCHAR(64) NOT NULL,
+            role ENUM('user','assistant','system') NOT NULL,
+            content MEDIUMTEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_thread_id (thread_id),
+            INDEX idx_user_thread (user_id, thread_id)
+        ) ENGINE=InnoDB;
+        """
+
         conn = self._conn()
         try:
             cur = conn.cursor()
             cur.execute(create_users)
             cur.execute(create_academic)
+            cur.execute(create_conversation)
 
             # Backward-compat adds
             cur.execute("SHOW COLUMNS FROM users LIKE 'categories';")
@@ -106,7 +121,7 @@ class RelationalDB:
                     self.logger.warning(f"users: could not add 'thread_id' column ({e})")
 
             conn.commit()
-            self.logger.info("tables ensured: users, academic_summary")
+            self.logger.info("tables ensured: users, academic_summary, conversation_logs")
         finally:
             cur.close()
             conn.close()
@@ -327,6 +342,63 @@ class RelationalDB:
         finally:
             conn.close()
 
+    # ----------------- conversation logs -----------------
+    def log_conversation_message(self, *, thread_id: str, user_id: str, role: str, content: str) -> None:
+        sql = (
+            "INSERT INTO conversation_logs (thread_id, user_id, role, content) "
+            "VALUES (%s, %s, %s, %s)"
+        )
+        if role not in {"user", "assistant", "system"}:
+            role = "assistant"
+        conn = self._conn()
+        try:
+            with conn.cursor() as cur:
+                cur.execute(sql, (thread_id, user_id, role, content))
+            conn.commit()
+        except Exception as e:
+            # Try to auto-create table once
+            try:
+                self.logger.warning(f"log_conversation_message failed ({e}); attempting to create tables")
+                self.create_tables()
+                with conn.cursor() as cur:
+                    cur.execute(sql, (thread_id, user_id, role, content))
+                conn.commit()
+            except Exception as e2:
+                self.logger.error(f"log_conversation_message failed after ensure: {e2}")
+        finally:
+            conn.close()
+
+    def get_conversation(self, thread_id: str, limit: Optional[int] = None) -> List[Dict[str, Any]]:
+        base = (
+            "SELECT role, content, created_at FROM conversation_logs "
+            "WHERE thread_id=%s ORDER BY id ASC"
+        )
+        sql = base + (" LIMIT %s" if isinstance(limit, int) and limit > 0 else "")
+        conn = self._conn()
+        try:
+            with conn.cursor(dictionary=True) as cur:
+                if "LIMIT %s" in sql:
+                    cur.execute(sql, (thread_id, int(limit)))
+                else:
+                    cur.execute(sql, (thread_id,))
+                rows = cur.fetchall() or []
+            out: List[Dict[str, Any]] = []
+            for r in rows:
+                ts = r.get("created_at")
+                if isinstance(ts, datetime):
+                    try:
+                        ts = ts.isoformat()
+                    except Exception:
+                        ts = str(ts)
+                out.append({
+                    "role": r.get("role"),
+                    "content": r.get("content") or "",
+                    "ts": ts,
+                })
+            return out
+        finally:
+            conn.close()
+
     def update_academic_score(
         self,
         user_id: str,
@@ -368,4 +440,3 @@ class RelationalDB:
             self.logger.info(f"academic_summary updated user_id={user_id}")
         finally:
             conn.close()
-
