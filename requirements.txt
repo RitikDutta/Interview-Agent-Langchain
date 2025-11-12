@@ -1,5 +1,7 @@
 # Requirements file for AI Mock Interview Application with Vector Database
 # Core dependencies
+Flask
+gunicorn
 
 # LangChain ecosystem
 langchain
@@ -13,7 +15,7 @@ pinecone
 langchain-pinecone
 
 # Embeddings and text processing
-transformers
+# transformers
 huggingface-hub
 
 # Text splitting and document processing
@@ -22,7 +24,7 @@ langchain-text-splitters
 # PDF processing
 pypdf
 PyPDF2
-langchain-community[pdf]
+# langchain-community[pdf]
 
 # Google Generative AI
 google-generativeai
