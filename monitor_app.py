@@ -78,6 +78,10 @@ def fetch_all(user_id: str) -> Dict[str, Any]:
     # RDBMS
     rdb_profile = rdb.get_user_profile(user_id) or {}
     rdb_scores  = rdb.get_user_academic_score(user_id) or {}
+    try:
+        rdb_history = rdb.get_conversation_history(user_id) or []
+    except Exception:
+        rdb_history = []
 
     # Vector DB
     vec = vdb.get_user_profile(user_id) or {}
@@ -92,6 +96,7 @@ def fetch_all(user_id: str) -> Dict[str, Any]:
         "rdb": {
             "profile": rdb_profile,
             "scores": rdb_scores,
+            "history": rdb_history,
         },
         "vector": {
             "id": vec.get("id"),
