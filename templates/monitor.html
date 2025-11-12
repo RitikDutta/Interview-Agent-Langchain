@@ -209,6 +209,55 @@
       </div>
 
       <hr class="my-4">
+      <!-- Conversation History (Relational DB) -->
+      {% set hist = (data.rdb.history or []) %}
+      <div class="card mb-4">
+        <div class="card-body">
+          <div class="section-title mb-2">Conversation History (Relational DB)</div>
+          <div class="mb-2 text-secondary">Total entries: {{ (hist|length) or 0 }}</div>
+          {% if hist and (hist|length) > 0 %}
+            <div class="table-responsive">
+              <table class="table table-sm align-middle">
+                <thead>
+                  <tr>
+                    <th class="text-secondary">#</th>
+                    <th class="text-secondary">Time</th>
+                    <th class="text-secondary">QID</th>
+                    <th class="text-secondary">Overall</th>
+                    <th class="text-secondary">TA</th>
+                    <th class="text-secondary">RD</th>
+                    <th class="text-secondary">CC</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for row in hist %}
+                  <tr>
+                    <td>{{ loop.index }}</td>
+                    <td><span class="text-body-tertiary">{{ row.created_at }}</span></td>
+                    <td><code>{{ row.question_id }}</code></td>
+                    <td>{{ row.score_overall }}</td>
+                    <td>{{ row.metric_technical_accuracy }}</td>
+                    <td>{{ row.metric_reasoning_depth }}</td>
+                    <td>{{ row.metric_communication_clarity }}</td>
+                  </tr>
+                  <tr>
+                    <td></td>
+                    <td colspan="6">
+                      <div class="small"><b>Question:</b> <span class="text-body-tertiary">{{ row.question_text }}</span></div>
+                      <div class="small mt-1"><b>Answer:</b> <span class="text-body-tertiary">{{ row.user_answer }}</span></div>
+                    </td>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          {% else %}
+            <div class="text-secondary">No conversation history saved yet.</div>
+          {% endif %}
+        </div>
+      </div>
+
+      <hr class="my-4">
       <div class="text-center text-secondary small">Built for Interview Mentor • Flask + Bootstrap</div>
     </div>
 
