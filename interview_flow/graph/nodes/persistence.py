@@ -112,3 +112,49 @@ def make_update_strength_weakness(*, rdb, vs):
 
     return update_strength_weakness
 
+
+def make_save_history(*, rdb):
+    def save_history(state: Dict[str, Any]) -> dict:
+        user_id = state.get("user_id") or ""
+        qid = state.get("picked_question_id") or "unknown"
+        qtext = (state.get("question") or "").strip()
+        ans = (state.get("answer") or "").strip()
+
+        m_ta = state.get("metric_technical_accuracy", {}) or {}
+        m_rd = state.get("metric_reasoning_depth", {}) or {}
+        m_cc = state.get("metric_communication_clarity", {}) or {}
+        # combined_score may be computed in aggregate_feedback; default to mean if missing
+        overall = state.get("combined_score")
+        try:
+            ta = float(m_ta.get("score") or 0)
+            rd = float(m_rd.get("score") or 0)
+            cc = float(m_cc.get("score") or 0)
+            if overall is None:
+                overall = float(int(round((ta + rd + cc) / 3)))
+            else:
+                overall = float(overall)
+        except Exception:
+            ta = rd = cc = 0.0
+            overall = 0.0
+
+        try:
+            if user_id and qtext and ans:
+                rdb.insert_conversation_history(
+                    user_id=user_id,
+                    question_id=str(qid),
+                    question_text=qtext,
+                    user_answer=ans,
+                    overall=overall,
+                    ta=ta,
+                    rd=rd,
+                    cc=cc,
+                )
+                logger.info("[save_history] persisted Q/A with metrics")
+            else:
+                logger.warning("[save_history] missing fields; skip persist")
+        except Exception as e:
+            logger.error(f"[save_history] persist failed: {e}")
+
+        return {"graph_state": "saved_history"}
+
+    return save_history
