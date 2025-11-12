@@ -93,7 +93,10 @@ def build_compiled_graph(*, rdb, vs, router, retriever, score_updater, llm, llm_
         {"go": "aggregate_feedback", "wait": END},
     )
 
-    builder.add_edge("aggregate_feedback", "update_strength_weakness")
+    # Save per-turn history (question, answer, metrics) before updating profile snapshots
+    builder.add_node("save_history", n_persist.make_save_history(rdb=rdb))
+    builder.add_edge("aggregate_feedback", "save_history")
+    builder.add_edge("save_history", "update_strength_weakness")
     builder.add_edge("update_strength_weakness", "update_profile_with_score")
 
     builder.add_edge("update_profile_with_score", "gate_should_continue")
