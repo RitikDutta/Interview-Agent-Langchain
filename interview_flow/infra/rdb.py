@@ -83,6 +83,23 @@ class RelationalDB:
         ) ENGINE=InnoDB;
         """
 
+        create_conv_history = """
+        CREATE TABLE IF NOT EXISTS conversation_history (
+            id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            user_id VARCHAR(64) NOT NULL,
+            question_id VARCHAR(255) NOT NULL,
+            question_text TEXT NOT NULL,
+            user_answer TEXT NOT NULL,
+            score_overall DECIMAL(5,2) NOT NULL,
+            metric_technical_accuracy DECIMAL(5,2) NOT NULL,
+            metric_reasoning_depth DECIMAL(5,2) NOT NULL,
+            metric_communication_clarity DECIMAL(5,2) NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
+            INDEX idx_conv_user_time (user_id, created_at)
+        ) ENGINE=InnoDB;
+        """
+
         create_conversation = """
         CREATE TABLE IF NOT EXISTS conversation_logs (
             id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
@@ -101,6 +118,7 @@ class RelationalDB:
             cur = conn.cursor()
             cur.execute(create_users)
             cur.execute(create_academic)
+            cur.execute(create_conv_history)
             cur.execute(create_conversation)
 
             # Backward-compat adds
@@ -121,7 +139,7 @@ class RelationalDB:
                     self.logger.warning(f"users: could not add 'thread_id' column ({e})")
 
             conn.commit()
-            self.logger.info("tables ensured: users, academic_summary, conversation_logs")
+            self.logger.info("tables ensured: users, academic_summary, conversation_history, conversation_logs")
         finally:
             cur.close()
             conn.close()
@@ -396,6 +414,68 @@ class RelationalDB:
                     "ts": ts,
                 })
             return out
+        finally:
+            conn.close()
+
+    # ----------------- conversation history (per Q/A with metrics) -----------------
+    def insert_conversation_history(
+        self,
+        *,
+        user_id: str,
+        question_id: str,
+        question_text: str,
+        user_answer: str,
+        overall: float,
+        ta: float,
+        rd: float,
+        cc: float,
+    ) -> None:
+        sql = (
+            """
+            INSERT INTO conversation_history
+                (user_id, question_id, question_text, user_answer,
+                 score_overall, metric_technical_accuracy,
+                 metric_reasoning_depth, metric_communication_clarity)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            """
+        )
+        conn = self._conn()
+        try:
+            with conn.cursor() as cur:
+                cur.execute(
+                    sql,
+                    (
+                        user_id,
+                        question_id,
+                        question_text,
+                        user_answer,
+                        float(overall),
+                        float(ta),
+                        float(rd),
+                        float(cc),
+                    ),
+                )
+            conn.commit()
+            self.logger.info(f"conversation_history inserted user_id={user_id} qid={question_id}")
+        finally:
+            conn.close()
+
+    def get_conversation_history(self, user_id: str) -> List[Dict[str, Any]]:
+        sql = """
+            SELECT id, user_id, question_id, question_text, user_answer,
+                   score_overall, metric_technical_accuracy,
+                   metric_reasoning_depth, metric_communication_clarity,
+                   created_at
+            FROM conversation_history
+            WHERE user_id=%s
+            ORDER BY created_at ASC
+        """
+        conn = self._conn()
+        try:
+            with conn.cursor(dictionary=True) as cur:
+                cur.execute(sql, (user_id,))
+                rows = cur.fetchall() or []
+            return rows
         finally:
             conn.close()
 
