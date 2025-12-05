@@ -2,9 +2,9 @@ from __future__ import annotations
 
 from typing import Any, Dict, Optional
 
-from ..logging import get_logger
-from ..infra.rdb import RelationalDB
-from .. import start_thread as _start_thread, resume_thread as _resume_thread, get_current_state as _get_state
+from .logging import get_logger
+from .infra.rdb import RelationalDB
+from . import start_thread as _start_thread, resume_thread as _resume_thread, get_current_state as _get_state
 
 
 class ThreadService:
@@ -119,4 +119,3 @@ class ThreadService:
     def get_conversation(self, *, thread_id: str, limit: Optional[int] = None) -> Dict[str, Any]:
         rows = self.rdb.get_conversation(thread_id, limit=limit)
         return {"thread_id": thread_id, "messages": rows}
-
