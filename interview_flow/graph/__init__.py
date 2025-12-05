@@ -5,7 +5,7 @@ from typing import Any, Dict, Optional
 from langgraph.types import Command
 
 from ..logging import get_logger
-from ..agents.llm import llm, llm_low_temp, llm_review, llm_overall
+from ..agents import llm, llm_low_temp, llm_review, llm_overall
 from .wiring import build_compiled_graph, get_thread_config
 
 
@@ -25,11 +25,11 @@ def _ensure_built():
     if _graph is not None:
         return
     # Import heavy deps lazily to avoid import-time network calls via transitive imports
+    from ..agents import llm, llm_low_temp, llm_review, llm_overall
     from ..infra.rdb import RelationalDB
     from ..infra.vector_store import VectorStore
-    from ..retrieval.planner import StrategicQuestionRouter
-    from ..retrieval.questions import QuestionSearch
-    from ..scoring.score_updater import ScoreUpdater
+    from ..retrieval import StrategicQuestionRouter, QuestionSearch
+    from ..scoring import ScoreUpdater
     from ..settings import QUESTIONS_NAMESPACE
 
     _rdb = RelationalDB()
