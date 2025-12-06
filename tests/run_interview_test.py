@@ -6,12 +6,15 @@ import os
 import sys
 import uuid
 
+# adding parent directory to path so we can import interview_flow
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+
 from dotenv import load_dotenv
 
-# Load .env first and ensure THINKING logs are enabled before any other imports
+# loading .env first, making sure thinking logs are on before imports
 load_dotenv()
 os.environ.setdefault("LOG_LEVEL", "THINKING")
-from interview_flow.logging import get_logger as _base_get_logger  # configures root using env
+from interview_flow.logging import get_logger as _base_get_logger
 _base_get_logger(level_name="THINKING")
 
 from interview_flow import start_thread, resume_thread, get_current_state
@@ -23,8 +26,8 @@ def _env(name: str, default: str) -> str:
 
 
 def main() -> int:
-    # Root logger already configured above via LOG_LEVEL and _base_get_logger
-    # Read required values from environment (.env loaded earlier)
+    # logger is already set up above
+    # reading env vars
     def _env_first(*names: str, default: str = "") -> str:
         for n in names:
             v = os.getenv(n)
@@ -41,12 +44,12 @@ def main() -> int:
     test_resume = _env("TEST_RESUME", "skip")
     test_answer = _env("TEST_ANSWER", f"Here's a brief answer about my experience in {test_domain}.")
 
-    header = f"Starting interview: user={user_id} thread_id={thread_id} strategy={strategy}"
+    header = f"user={user_id} thread_id={thread_id} strategy={strategy}"
     if ns:
         header += f" namespace={ns}"
-    print(header)
+    print(f"starting interview test: {header}")
 
-    # Kick off
+    # kicking off the thread
     def _pick_prompt(intr) -> str:
         if intr is None:
             return ""
@@ -63,7 +66,7 @@ def main() -> int:
 
     out = start_thread(thread_id=thread_id, user_id=user_id, strategy=strategy)
 
-    # Respond to up to 3 interrupts in order: domain → resume → question
+    # responding to up to 3 interrupts: domain -> resume -> question
     values = [test_domain, test_resume, test_answer]
     step = 0
     while step < len(values):
@@ -72,27 +75,32 @@ def main() -> int:
             break
         prompt = _pick_prompt(intr)
         if prompt:
-            print(f"Interrupt → {prompt}")
-        out = resume_thread(thread_id=thread_id, value=values[step])
+            print(f"agent asked: {prompt}")
+        
+        val = values[step]
+        print(f"user replying: {val}")
+        out = resume_thread(thread_id=thread_id, value=val)
         step += 1
 
-    # If we haven’t yet answered the question, try once based on state
+    # if we haven't answered the question yet, try once more based on state
     if step < 3:
         st = get_current_state(thread_id)
         qtext = (st.get("question") or "").strip()
-        if qtext and step < 2:  # we must have skipped directly to question
-            print(f"Question → {qtext}")
+        if qtext and step < 2:  # skipped directly to question
+            print(f"agent question: {qtext}")
+            print(f"user replying: {test_answer}")
             out = resume_thread(thread_id=thread_id, value=test_answer)
             step = 3
         elif qtext and step == 2:
-            # Already answered resume; now answer question
-            print(f"Question → {qtext}")
+            # answered resume, now answering question
+            print(f"agent question: {qtext}")
+            print(f"user replying: {test_answer}")
             out = resume_thread(thread_id=thread_id, value=test_answer)
             step = 3
 
-    # Final state
+    # final state summary
     state = get_current_state(thread_id)
-    print("\n=== Final State (summary) ===")
+    print("\n=== final state summary ===")
     print(f"thread_id: {thread_id}")
     print(f"question:  {state.get('question')}")
     print(f"answer:    {state.get('answer')}")
@@ -100,13 +108,13 @@ def main() -> int:
         mta = state.get("metric_technical_accuracy") or {}
         mrd = state.get("metric_reasoning_depth") or {}
         mcc = state.get("metric_communication_clarity") or {}
-        print(f"TA: {mta.get('score')} — {mta.get('feedback')}")
-        print(f"RD: {mrd.get('score')} — {mrd.get('feedback')}")
-        print(f"CC: {mcc.get('score')} — {mcc.get('feedback')}")
+        print(f"technical accuracy: {mta.get('score')} — {mta.get('feedback')}")
+        print(f"reasoning depth: {mrd.get('score')} — {mrd.get('feedback')}")
+        print(f"communication clarity: {mcc.get('score')} — {mcc.get('feedback')}")
     except Exception:
         pass
-    print(f"combined_score: {state.get('combined_score')}")
-    print(f"overall_feedback: {state.get('overall_feedback_summary')}")
+    print(f"combined score: {state.get('combined_score')}")
+    print(f"overall feedback: {state.get('overall_feedback_summary')}")
 
     return 0
 
@@ -115,5 +123,5 @@ if __name__ == "__main__":
     try:
         raise SystemExit(main())
     except KeyboardInterrupt:
-        print("\nInterrupted.")
+        print("\ninterrupted.")
         raise
