@@ -11,7 +11,7 @@
         }
 
         body {
-            background: url("background.png") no-repeat center center fixed;
+            background: url("../img/background.png") no-repeat center center fixed;
             background-size: cover;
             color: var(--pencil-gray);
             font-family: 'Patrick Hand', cursive;
@@ -276,7 +276,7 @@
         }
 
         .hero-cta-btn {
-            background: url("button texture.png") no-repeat center center;
+            background: url("../img/button texture.png") no-repeat center center;
             background-size: 100% 100%;
             border: none;
             border-radius: 8px;
