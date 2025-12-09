@@ -8,14 +8,9 @@ from langgraph.graph import StateGraph, START, END
 from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.checkpoint.sqlite import SqliteSaver
 
-from ..schemas.state import State
+from ..schemas import State
 from ..logging import get_logger
-from .nodes import routing as n_routing
-from .nodes import intake as n_intake
-from .nodes import resume_profile as n_profile
-from .nodes import interview as n_interview
-from .nodes import metrics as n_metrics
-from .nodes import persistence as n_persist
+from . import nodes as n
 
 
 def get_thread_config(thread_id: str) -> dict:
@@ -27,41 +22,41 @@ def build_compiled_graph(*, rdb, vs, router, retriever, score_updater, llm, llm_
     builder = StateGraph(State)
 
     # Nodes without DI
-    builder.add_node("gate_is_new_user", n_routing.gate_is_new_user)
-    builder.add_node("ask_domain", n_intake.node_ask_domain)
-    builder.add_node("get_domain", n_intake.node_get_domain)
-    builder.add_node("ask_resume", n_intake.node_ask_resume)
-    builder.add_node("get_resume_url", n_intake.node_get_resume_url)
+    builder.add_node("gate_is_new_user", n.gate_is_new_user)
+    builder.add_node("ask_domain", n.node_ask_domain)
+    builder.add_node("get_domain", n.node_get_domain)
+    builder.add_node("ask_resume", n.node_ask_resume)
+    builder.add_node("get_resume_url", n.node_get_resume_url)
 
     # Nodes with DI (closures)
-    builder.add_node("node_resume_ETL", n_profile.make_node_resume_ETL(rdb=rdb, vs=vs))
-    builder.add_node("update_profile", n_profile.make_update_profile(rdb=rdb, vs=vs))
+    builder.add_node("node_resume_ETL", n.make_node_resume_ETL(rdb=rdb, vs=vs))
+    builder.add_node("update_profile", n.make_update_profile(rdb=rdb, vs=vs))
 
-    builder.add_node("query_question", n_interview.make_query_question(router=router, retriever=retriever))
-    builder.add_node("ask_question", n_interview.ask_question)
-    builder.add_node("get_answer", n_interview.get_answer)
+    builder.add_node("query_question", n.make_query_question(router=router, retriever=retriever))
+    builder.add_node("ask_question", n.ask_question)
+    builder.add_node("get_answer", n.get_answer)
 
-    builder.add_node("validate_technical_accuracy", n_metrics.make_validate_metric("technical_accuracy"))
-    builder.add_node("validate_reasoning_depth", n_metrics.make_validate_metric("reasoning_depth"))
-    builder.add_node("validate_communication_clarity", n_metrics.make_validate_metric("communication_clarity"))
-    builder.add_node("metrics_barrier", n_metrics.metrics_barrier)
+    builder.add_node("validate_technical_accuracy", n.make_validate_metric("technical_accuracy"))
+    builder.add_node("validate_reasoning_depth", n.make_validate_metric("reasoning_depth"))
+    builder.add_node("validate_communication_clarity", n.make_validate_metric("communication_clarity"))
+    builder.add_node("metrics_barrier", n.metrics_barrier)
 
-    builder.add_node("aggregate_feedback", n_metrics.make_aggregate_feedback(llm_overall=llm_overall))
+    builder.add_node("aggregate_feedback", n.make_aggregate_feedback(llm_overall=llm_overall))
 
-    builder.add_node("update_profile_with_score", n_persist.make_update_profile_with_score(score_updater=score_updater, rdb=rdb, vs=vs))
-    builder.add_node("update_strength_weakness", n_persist.make_update_strength_weakness(rdb=rdb, vs=vs))
-    builder.add_node("gate_should_continue", n_routing.gate_should_continue)
+    builder.add_node("update_profile_with_score", n.make_update_profile_with_score(score_updater=score_updater, rdb=rdb, vs=vs))
+    builder.add_node("update_strength_weakness", n.make_update_strength_weakness(rdb=rdb, vs=vs))
+    builder.add_node("gate_should_continue", n.gate_should_continue)
 
     # Edges
     builder.add_edge(START, "gate_is_new_user")
     builder.add_conditional_edges(
         "gate_is_new_user",
-        n_routing.route_is_new_user,
+        n.route_is_new_user,
         {"new_user": "init_user", "existing_user": "query_question"},
     )
 
     # New user init node (simple helper in routing module)
-    builder.add_node("init_user", n_routing.make_init_user(rdb=rdb, vs=vs))
+    builder.add_node("init_user", n.make_init_user(rdb=rdb, vs=vs))
     builder.add_edge("init_user", "ask_domain")
 
     builder.add_edge("ask_domain", "get_domain")
@@ -70,7 +65,7 @@ def build_compiled_graph(*, rdb, vs, router, retriever, score_updater, llm, llm_
 
     builder.add_conditional_edges(
         "get_resume_url",
-        n_intake.is_resume_url,
+        n.is_resume_url,
         {"resume_is_present": "node_resume_ETL", "resume_is_not_present": "update_profile"},
     )
 
@@ -89,12 +84,12 @@ def build_compiled_graph(*, rdb, vs, router, retriever, score_updater, llm, llm_
 
     builder.add_conditional_edges(
         "metrics_barrier",
-        n_metrics.metrics_barrier_decider,
+        n.metrics_barrier_decider,
         {"go": "aggregate_feedback", "wait": END},
     )
 
     # Save per-turn history (question, answer, metrics) before updating profile snapshots
-    builder.add_node("save_history", n_persist.make_save_history(rdb=rdb))
+    builder.add_node("save_history", n.make_save_history(rdb=rdb))
     builder.add_edge("aggregate_feedback", "save_history")
     builder.add_edge("save_history", "update_strength_weakness")
     builder.add_edge("update_strength_weakness", "update_profile_with_score")
@@ -102,7 +97,7 @@ def build_compiled_graph(*, rdb, vs, router, retriever, score_updater, llm, llm_
     builder.add_edge("update_profile_with_score", "gate_should_continue")
     builder.add_conditional_edges(
         "gate_should_continue",
-        n_routing.route_should_continue,
+        n.route_should_continue,
         {"continue": "query_question", "exit": END},
     )
 
