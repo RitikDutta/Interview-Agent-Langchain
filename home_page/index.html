@@ -12,7 +12,7 @@
         href="https://fonts.googleapis.com/css2?family=Architects+Daughter&family=Patrick+Hand&family=Permanent+Marker&display=swap"
         rel="stylesheet">
 
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/home_style.css') }}">
+    <link rel="stylesheet" href="style.css">
 </head>
 
 <body>
@@ -26,8 +26,7 @@
                     <!-- logo circle placeholder -->
                     <div class="hero-logo-placeholder">
                         <span>Robot logo sketch</span>
-                        <img src="{{ url_for('static', filename='img/logo.png') }}"
-                            alt="Pencil sketch logo: friendly robot head inside a circle.">
+                        <img src="logo.png" alt="Pencil sketch logo: friendly robot head inside a circle.">
                     </div>
                 </div>
 
@@ -44,18 +43,12 @@
             <!-- main interview frame -->
             <div class="hero-frame-wrap">
                 <div class="hero-frame">
-                    <img src="{{ url_for('static', filename='img/hero.png') }}" alt="Interview Ready Hero"
-                        class="hero-illustration-img">
+                    <img src="hero.png" alt="Interview Ready Hero" class="hero-illustration-img">
 
                     <!-- buttons under frame -->
                     <div class="hero-cta-bar">
-                        <a href="{{ url_for('agent_page', user_id=user_id, username=username, strategy=strategy) }}"
-                            class="hero-cta-btn"
-                            style="text-decoration:none; display:inline-flex; align-items:center; justify-content:center;">START
-                            MOCK INTERVIEW</a>
-                        <a href="{{ url_for('monitor', user_id=user_id) }}" class="hero-cta-btn"
-                            style="text-decoration:none; display:inline-flex; align-items:center; justify-content:center;">MONITOR
-                            (DEV MODE)</a>
+                        <button class="hero-cta-btn">START MOCK INTERVIEW</button>
+                        <button class="hero-cta-btn">START INTERVIEW (DEVELOPER MODE)</button>
                     </div>
                 </div>
             </div>
@@ -64,22 +57,19 @@
             <div class="hero-features-row">
                 <div>
                     <div class="mini-img-placeholder">
-                        <img src="{{ url_for('static', filename='img/bt1.png') }}"
-                            alt="Pencil sketch of two professionals shaking hands.">
+                        <img src="bt1.png" alt="Pencil sketch of two professionals shaking hands.">
                     </div>
                     <div class="hero-feature-title">REALISTIC PRACTICE</div>
                 </div>
                 <div>
                     <div class="mini-img-placeholder">
-                        <img src="{{ url_for('static', filename='img/bt2.png') }}"
-                            alt="Pencil sketch of a report sheet with a checkmark.">
+                        <img src="bt2.png" alt="Pencil sketch of a report sheet with a checkmark.">
                     </div>
                     <div class="hero-feature-title">INSTANT FEEDBACK</div>
                 </div>
                 <div>
                     <div class="mini-img-placeholder">
-                        <img src="{{ url_for('static', filename='img/bt3.png') }}"
-                            alt="Pencil sketch of a glowing light bulb.">
+                        <img src="bt3.png" alt="Pencil sketch of a glowing light bulb.">
                     </div>
                     <div class="hero-feature-title">PERSONALIZED COACHING</div>
                 </div>
@@ -269,8 +259,7 @@
             </div>
             <div class="reveal">
                 <div>
-                    <img src="{{ url_for('static', filename='img/ai_core3.png') }}"
-                        style="width: 100%; height: auto; display: block;"
+                    <img src="ai_core3.png" style="width: 100%; height: auto; display: block;"
                         alt="Hand-drawn system architecture diagram with user inputs, generative AI orchestration, custom assistants and scoring agents.">
                 </div>
             </div>
@@ -403,8 +392,7 @@
             </div>
             <div class="reveal">
                 <div>
-                    <img src="{{ url_for('static', filename='img/befaft.png') }}"
-                        style="width: 100%; height: auto; display: block;"
+                    <img src="befaft.png" style="width: 100%; height: auto; display: block;"
                         alt="Before and after pencil sketch: a nervous candidate outside an interview room and the same person confidently speaking to an AI robot interviewer with rising score charts behind them.">
                 </div>
             </div>
@@ -419,9 +407,7 @@
                 Plug Interview Ready into your workflow, or invite beta users to try
                 the AI coach. Every mock interview is one step closer to the real offer.
             </p>
-            <a href="{{ url_for('agent_page', user_id=user_id, username=username, strategy=strategy) }}"
-                class="hero-cta-btn" style="text-decoration:none; display:inline-block; text-align:center;">Book a mock
-                interview with the AI</a>
+            <a href="#top" class="hero-cta-btn">Book a mock interview with the AI</a>
             <p style="font-size:0.95rem; margin-top:1rem;">
                 Interview Mentor — AI-powered interview rehearsal that feels like a
                 friendly conversation, not an exam.
@@ -437,7 +423,7 @@
         </p>
     </footer>
 
-    <script src="{{ url_for('static', filename='js/home_script.js') }}"></script>
+    <script src="script.js"></script>
 </body>
 
 </html>
