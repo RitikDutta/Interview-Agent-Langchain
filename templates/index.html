@@ -30,60 +30,71 @@
                             alt="Pencil sketch logo: friendly robot head inside a circle.">
                     </div>
                 </div>
-
-                <!-- nav text -->
-                <nav class="hero-nav">
-                    <a href="#top" class="active">HOME</a>
-                    <a href="#how-it-works">HOW IT WORKS</a>
-                    <a href="#pricing">PRICING</a>
-                    <a href="#impact">ABOUT</a>
-                    <a href="#footer">LOGIN</a>
-                </nav>
             </div>
 
-            <!-- main interview frame -->
-            <div class="hero-frame-wrap">
-                <div class="hero-frame">
-                    <img src="{{ url_for('static', filename='img/hero.png') }}" alt="Interview Ready Hero"
-                        class="hero-illustration-img">
+            <!-- Hamburger Menu Button -->
+            <button class="nav-toggle" aria-label="Toggle navigation">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="3" y1="6" x2="21" y2="6"></line>
+                    <line x1="3" y1="12" x2="21" y2="12"></line>
+                    <line x1="3" y1="18" x2="21" y2="18"></line>
+                </svg>
+            </button>
 
-                    <!-- buttons under frame -->
-                    <div class="hero-cta-bar">
-                        <a href="{{ url_for('agent_page', user_id=user_id, username=username, strategy=strategy) }}"
-                            class="hero-cta-btn"
-                            style="text-decoration:none; display:inline-flex; align-items:center; justify-content:center;">START
-                            MOCK INTERVIEW</a>
-                        <a href="{{ url_for('monitor', user_id=user_id) }}" class="hero-cta-btn"
-                            style="text-decoration:none; display:inline-flex; align-items:center; justify-content:center;">MONITOR
-                            (DEV MODE)</a>
-                    </div>
+            <!-- nav text -->
+            <nav class="hero-nav">
+                <a href="#top" class="active">HOME</a>
+                <a href="#how-it-works">HOW IT WORKS</a>
+                <a href="#pricing">PRICING</a>
+                <a href="#impact">ABOUT</a>
+                <a href="#footer">LOGIN</a>
+            </nav>
+        </div>
+
+        <!-- main interview frame -->
+        <div class="hero-frame-wrap">
+            <div class="hero-frame">
+                <img src="{{ url_for('static', filename='img/hero.png') }}" alt="Interview Ready Hero"
+                    class="hero-illustration-img">
+
+                <!-- buttons under frame -->
+                <div class="hero-cta-bar">
+                    <a href="{{ url_for('agent_page', user_id=user_id, username=username, strategy=strategy) }}"
+                        class="hero-cta-btn"
+                        style="text-decoration:none; display:inline-flex; align-items:center; justify-content:center;">START
+                        MOCK INTERVIEW</a>
+                    <a href="{{ url_for('monitor', user_id=user_id) }}" class="hero-cta-btn"
+                        style="text-decoration:none; display:inline-flex; align-items:center; justify-content:center;">MONITOR
+                        (DEV MODE)</a>
                 </div>
             </div>
+        </div>
 
-            <!-- feature row at bottom -->
-            <div class="hero-features-row">
-                <div>
-                    <div class="mini-img-placeholder">
-                        <img src="{{ url_for('static', filename='img/bt1.png') }}"
-                            alt="Pencil sketch of two professionals shaking hands.">
-                    </div>
-                    <div class="hero-feature-title">REALISTIC PRACTICE</div>
+        <!-- feature row at bottom -->
+        <div class="hero-features-row">
+            <div>
+                <div class="mini-img-placeholder">
+                    <img src="{{ url_for('static', filename='img/bt1.png') }}"
+                        alt="Pencil sketch of two professionals shaking hands.">
                 </div>
-                <div>
-                    <div class="mini-img-placeholder">
-                        <img src="{{ url_for('static', filename='img/bt2.png') }}"
-                            alt="Pencil sketch of a report sheet with a checkmark.">
-                    </div>
-                    <div class="hero-feature-title">INSTANT FEEDBACK</div>
-                </div>
-                <div>
-                    <div class="mini-img-placeholder">
-                        <img src="{{ url_for('static', filename='img/bt3.png') }}"
-                            alt="Pencil sketch of a glowing light bulb.">
-                    </div>
-                    <div class="hero-feature-title">PERSONALIZED COACHING</div>
-                </div>
+                <div class="hero-feature-title">REALISTIC PRACTICE</div>
             </div>
+            <div>
+                <div class="mini-img-placeholder">
+                    <img src="{{ url_for('static', filename='img/bt2.png') }}"
+                        alt="Pencil sketch of a report sheet with a checkmark.">
+                </div>
+                <div class="hero-feature-title">INSTANT FEEDBACK</div>
+            </div>
+            <div>
+                <div class="mini-img-placeholder">
+                    <img src="{{ url_for('static', filename='img/bt3.png') }}"
+                        alt="Pencil sketch of a glowing light bulb.">
+                </div>
+                <div class="hero-feature-title">PERSONALIZED COACHING</div>
+            </div>
+        </div>
         </div>
     </section>
 

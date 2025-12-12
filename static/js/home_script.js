@@ -16,6 +16,20 @@ const revealOnScroll = () => {
 window.addEventListener('scroll', revealOnScroll);
 revealOnScroll();
 
+// Navigation Toggle Logic
+const navToggle = document.querySelector('.nav-toggle');
+const navMenu = document.querySelector('.hero-nav');
+
+if (navToggle && navMenu) {
+    navToggle.addEventListener('click', () => {
+        navMenu.classList.toggle('open');
+        navToggle.classList.toggle('open');
+
+        // Optional: Animate icon (e.g., turn hamburger into X)
+        // For now, simpler is fine.
+    });
+}
+
 (function () {
     // --- data model of your architecture flow ---
     const steps = [
@@ -142,6 +156,7 @@ revealOnScroll();
         </div>
         <div class="flow-node-title">${step.title}</div>
         <div class="flow-node-caption">${step.caption}</div>
+        <div class="flow-mobile-details"></div>
       `;
         node.addEventListener("click", () => {
             currentStep = index;
@@ -176,7 +191,7 @@ revealOnScroll();
 
         progressLabelEl.textContent = step.caption;
 
-        // detail pane
+        // detail pane (desktop)
         detailStepPillEl.textContent = `Step ${currentStep + 1} · ${step.category}`;
         detailTitleEl.textContent = step.title;
         detailBodyEl.textContent = step.description;
@@ -192,17 +207,39 @@ revealOnScroll();
         // highlight nodes
         nodeElements.forEach((nodeEl, index) => {
             nodeEl.classList.remove("active", "completed");
+
+            // Clear mobile details for all nodes first (or just set empty)
+            const mobileDetailEl = nodeEl.querySelector('.flow-mobile-details');
+            if (mobileDetailEl) mobileDetailEl.innerHTML = "";
+
             if (index === currentStep) {
                 nodeEl.classList.add("active");
 
-                // AUTO SCROLL TO ACTIVE NODE on mobile?
-                // if (window.innerWidth < 880) {
-                //    nodeEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-                // }
+                // POPULATE mobile details for active node
+                if (mobileDetailEl) {
+                    let techHtml = "";
+                    if (step.tech && step.tech.trim().length > 0) {
+                        techHtml = `<div class="flow-mobile-tech">${step.tech}</div>`;
+                    }
+                    mobileDetailEl.innerHTML = `
+                        <div class="flow-mobile-desc">${step.description}</div>
+                        ${techHtml}
+                    `;
+                }
+
+                // Auto scroll to active node on mobile
+                if (window.innerWidth < 900) {
+                    // Small delay to allow content expansion to affect layout
+                    setTimeout(() => {
+                        nodeEl.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+                    }, 50);
+                }
             } else if (index < currentStep) {
                 nodeEl.classList.add("completed");
             }
         });
+
+
 
         // buttons
         prevBtn.disabled = currentStep === 0;
