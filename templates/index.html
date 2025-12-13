@@ -30,43 +30,72 @@
                             alt="Pencil sketch logo: friendly robot head inside a circle.">
                     </div>
                 </div>
+
+                <!-- Hamburger Menu Button -->
+                <button class="nav-toggle" aria-label="Toggle navigation">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="3" y1="6" x2="21" y2="6"></line>
+                        <line x1="3" y1="12" x2="21" y2="12"></line>
+                        <line x1="3" y1="18" x2="21" y2="18"></line>
+                    </svg>
+                </button>
+
+                <!-- nav text -->
+                <nav class="hero-nav">
+                    <a href="#top" class="active">HOME</a>
+                    <a href="#how-it-works">HOW IT WORKS</a>
+                    <a href="#pricing">PRICING</a>
+                    <a href="#impact">ABOUT</a>
+                    <a href="#footer">LOGIN</a>
+                </nav>
             </div>
-
-            <!-- Hamburger Menu Button -->
-            <button class="nav-toggle" aria-label="Toggle navigation">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                    stroke-linecap="round" stroke-linejoin="round">
-                    <line x1="3" y1="6" x2="21" y2="6"></line>
-                    <line x1="3" y1="12" x2="21" y2="12"></line>
-                    <line x1="3" y1="18" x2="21" y2="18"></line>
-                </svg>
-            </button>
-
-            <!-- nav text -->
-            <nav class="hero-nav">
-                <a href="#top" class="active">HOME</a>
-                <a href="#how-it-works">HOW IT WORKS</a>
-                <a href="#pricing">PRICING</a>
-                <a href="#impact">ABOUT</a>
-                <a href="#footer">LOGIN</a>
-            </nav>
         </div>
 
-        <!-- main interview frame -->
-        <div class="hero-frame-wrap">
-            <div class="hero-frame">
-                <img src="{{ url_for('static', filename='img/hero.png') }}" alt="Interview Ready Hero"
-                    class="hero-illustration-img">
+        <!-- desktop hero (shows on large screens) -->
+        <div class="hero-frame-desktop">
+            <div class="hero-frame-wrap">
+                <div class="hero-frame">
+                    <img src="{{ url_for('static', filename='img/hero.png') }}" alt="Interview Ready Hero"
+                        class="hero-illustration-img">
 
-                <!-- buttons under frame -->
+                    <div class="hero-cta-bar">
+                        <a href="{{ url_for('agent_page', user_id=user_id, username=username, strategy=strategy) }}"
+                            class="hero-cta-btn"
+                            style="text-decoration:none; display:inline-flex; align-items:center; justify-content:center;">START
+                            MOCK INTERVIEW</a>
+                        <a href="{{ url_for('monitor', user_id=user_id) }}" class="hero-cta-btn"
+                            style="text-decoration:none; display:inline-flex; align-items:center; justify-content:center;">MONITOR
+                            (DEV MODE)</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="hero-grid">
+            <div class="hero-content">
+                <p class="hero-eyebrow">AI interview mentor</p>
+                <h1 class="hero-title">Interview Ready on every screen.</h1>
+                <p class="hero-subtitle">
+                    Practice in a calm, sketchbook-style space. Works just as well on your phone as on desktop.
+                </p>
+                <ul class="hero-bullets">
+                    <li>10–15 minute warm-ups or full interview loops.</li>
+                    <li>Instant scoring with actionable coaching after every answer.</li>
+                    <li>Voice or text chat, resume-aware questions, and saved progress.</li>
+                </ul>
                 <div class="hero-cta-bar">
                     <a href="{{ url_for('agent_page', user_id=user_id, username=username, strategy=strategy) }}"
-                        class="hero-cta-btn"
-                        style="text-decoration:none; display:inline-flex; align-items:center; justify-content:center;">START
-                        MOCK INTERVIEW</a>
-                    <a href="{{ url_for('monitor', user_id=user_id) }}" class="hero-cta-btn"
-                        style="text-decoration:none; display:inline-flex; align-items:center; justify-content:center;">MONITOR
-                        (DEV MODE)</a>
+                        class="hero-cta-btn">START MOCK INTERVIEW</a>
+                    <a href="{{ url_for('monitor', user_id=user_id) }}" class="hero-cta-btn secondary">MONITOR (DEV MODE)</a>
+                </div>
+            </div>
+
+            <!-- main interview frame -->
+            <div class="hero-frame-wrap">
+                <div class="hero-frame">
+                    <img src="{{ url_for('static', filename='img/hero.png') }}" alt="Interview Ready Hero"
+                        class="hero-illustration-img">
                 </div>
             </div>
         </div>
@@ -94,7 +123,6 @@
                 </div>
                 <div class="hero-feature-title">PERSONALIZED COACHING</div>
             </div>
-        </div>
         </div>
     </section>
 

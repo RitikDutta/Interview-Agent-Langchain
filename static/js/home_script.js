@@ -28,6 +28,14 @@ if (navToggle && navMenu) {
         // Optional: Animate icon (e.g., turn hamburger into X)
         // For now, simpler is fine.
     });
+
+    // Close the menu after selecting a link on small screens
+    navMenu.querySelectorAll('a').forEach((link) => {
+        link.addEventListener('click', () => {
+            navMenu.classList.remove('open');
+            navToggle.classList.remove('open');
+        });
+    });
 }
 
 (function () {

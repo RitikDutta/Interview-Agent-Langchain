@@ -1334,3 +1334,288 @@
                 font-size: 0.85rem;
             }
         }
+
+/* ============ Responsive layout refresh ============ */
+.hero-grid {
+    display: none;
+}
+
+.hero-frame-desktop {
+    display: block;
+}
+
+@media (max-width: 900px) {
+    body {
+        background-attachment: scroll;
+        background-size: cover;
+    }
+
+    .hero-frame-desktop {
+        display: none;
+    }
+
+    .hero-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
+        align-items: center;
+        gap: clamp(1rem, 3vw, 2.5rem);
+        background: rgba(255, 255, 255, 0.9);
+        border: 2px solid var(--pencil-gray);
+        border-radius: 22px;
+        padding: clamp(1.1rem, 3vw, 2rem);
+        box-shadow: 3px 5px 0 rgba(0, 0, 0, 0.08);
+    }
+
+    .hero-shell {
+        padding: 1.2rem 1rem 2.4rem;
+        gap: 1.2rem;
+    }
+
+    .hero-card {
+        padding: 0;
+    }
+
+    .hero-content {
+        display: flex;
+        flex-direction: column;
+        gap: 0.65rem;
+    }
+
+    .hero-eyebrow {
+        font-family: 'Architects Daughter', cursive;
+        font-size: 0.95rem;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--graphite-light);
+    }
+
+    .hero-title {
+        font-size: clamp(2.05rem, 2vw + 1.5rem, 2.6rem);
+        margin: 0;
+    }
+
+    .hero-subtitle {
+        margin: 0;
+        color: var(--graphite-light);
+        font-size: 1.02rem;
+    }
+
+    .hero-bullets {
+        list-style: none;
+        padding: 0;
+        margin: 0.35rem 0 0;
+        display: grid;
+        gap: 0.4rem;
+        color: var(--graphite-light);
+        font-size: 1rem;
+    }
+
+    .hero-bullets li {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.35rem;
+    }
+
+    .hero-bullets li::before {
+        content: "•";
+        font-size: 1.1rem;
+        line-height: 1.2;
+    }
+
+    .hero-cta-bar {
+        position: static;
+        transform: none;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.7rem;
+        justify-content: flex-start;
+        margin-top: 0.6rem;
+        pointer-events: auto;
+    }
+
+    .hero-cta-btn {
+        min-height: 48px;
+        padding: 0.8rem 1.6rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        text-decoration: none;
+        background-size: 100% 100%;
+        width: 100%;
+        max-width: 320px;
+    }
+
+    .hero-cta-btn.secondary {
+        background: #fff;
+        border: 2px dashed var(--pencil-gray);
+        box-shadow: 3px 4px 0 rgba(0, 0, 0, 0.12);
+    }
+
+    .hero-frame {
+        border: 2px solid var(--pencil-gray);
+        background: #ffffff;
+        padding: 0.75rem;
+        border-radius: 18px;
+        box-shadow: 4px 5px 0 rgba(0, 0, 0, 0.12);
+        width: 100%;
+        max-width: 520px;
+    }
+
+    .hero-illustration-img {
+        border-radius: 12px;
+    }
+
+    .hero-features-row {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 1rem;
+        padding: 0;
+        margin-top: 1.25rem;
+    }
+
+    .hero-features-row>div {
+        background: rgba(255, 255, 255, 0.8);
+        border: 2px solid var(--pencil-gray);
+        border-radius: 16px;
+        padding: 0.9rem;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        text-align: left;
+        box-shadow: 3px 4px 0 rgba(0, 0, 0, 0.08);
+    }
+
+    .hero-features-row>div:not(:last-child)::after {
+        display: none;
+    }
+
+    .mini-img-placeholder {
+        width: 64px;
+        height: 64px;
+    }
+
+    .hero-feature-title {
+        margin: 0;
+        font-size: 1.05rem;
+    }
+}
+
+@media (min-width: 601px) and (max-width: 900px) {
+    .hero-grid {
+        grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
+        padding: 1.4rem;
+    }
+
+    .hero-cta-btn {
+        width: auto;
+        max-width: none;
+    }
+}
+
+@media (max-width: 600px) {
+    .hero-grid {
+        grid-template-columns: 1fr;
+        padding: 1rem;
+        border-radius: 18px;
+    }
+
+    .hero-title {
+        font-size: 2.1rem;
+    }
+
+    .hero-subtitle {
+        font-size: 1rem;
+    }
+
+    .hero-cta-btn,
+    .hero-cta-btn.secondary {
+        width: 100%;
+    }
+}
+
+@media (min-width: 901px) {
+    .hero-grid {
+        display: none;
+    }
+
+    .hero-frame-desktop {
+        display: block;
+    }
+
+    .hero-cta-bar {
+        position: absolute;
+        bottom: 0;
+        left: 50%;
+        transform: translate(-50%, 20%);
+        display: flex;
+        justify-content: center;
+        gap: 1.3rem;
+        width: 100%;
+        pointer-events: none;
+    }
+
+    .hero-cta-bar>* {
+        pointer-events: auto;
+    }
+
+    .hero-cta-btn {
+        padding: 0.75rem 1.8rem;
+        min-height: 0;
+        width: auto;
+    }
+
+    .hero-cta-btn.secondary {
+        background: url("../img/button texture.png") no-repeat center center;
+        background-size: 100% 100%;
+        border: none;
+        box-shadow: none;
+    }
+
+    .hero-features-row {
+        display: flex;
+        justify-content: center;
+        flex-wrap: wrap;
+        gap: 4rem;
+        padding: 0 1rem;
+        text-align: center;
+        margin-top: 2.2rem;
+    }
+
+    .hero-features-row>div {
+        flex: 1;
+        padding: 0 1rem;
+        position: relative;
+        display: flex;
+        flex-direction: column-reverse;
+        align-items: center;
+        background: transparent;
+        border: none;
+        box-shadow: none;
+    }
+
+    .hero-features-row>div:not(:last-child)::after {
+        content: "";
+        position: absolute;
+        right: -3px;
+        top: 10%;
+        height: 80%;
+        width: 8px;
+        background-color: transparent;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 100' preserveAspectRatio='none'%3E%3Cpath d='M 5 0 C 2 20, 8 40, 5 60 S 2 90, 5 100' stroke='%23333' stroke-width='2' fill='none' vector-effect='non-scaling-stroke' stroke-linecap='round' stroke-linejoin='round' /%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-size: 100% 100%;
+        background-position: center;
+    }
+
+    .mini-img-placeholder {
+        width: 140px;
+        height: 140px;
+    }
+
+    .hero-feature-title {
+        margin-top: 0;
+        margin-bottom: 0.6rem;
+        font-size: 1rem;
+        text-align: center;
+    }
+}
