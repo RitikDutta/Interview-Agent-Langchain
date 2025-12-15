@@ -2,7 +2,7 @@ name: Build & Deploy to Cloud Run (DockerHub)
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "master" ]
 
 env:
   IMAGE_NAME: ritikdutta/interview-ready
