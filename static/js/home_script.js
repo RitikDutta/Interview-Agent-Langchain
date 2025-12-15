@@ -38,6 +38,17 @@ if (navToggle && navMenu) {
     });
 }
 
+// CTA hint reveal after load
+const heroCtas = document.querySelectorAll('.hero-cta-btn');
+if (heroCtas.length) {
+    setTimeout(() => {
+        heroCtas.forEach((btn) => btn.classList.add('cta-highlight'));
+        setTimeout(() => {
+            heroCtas.forEach((btn) => btn.classList.remove('cta-highlight'));
+        }, 1300);
+    }, 300);
+}
+
 (function () {
     // --- data model of your architecture flow ---
     const steps = [
