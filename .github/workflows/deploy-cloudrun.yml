@@ -1,0 +1,58 @@
+name: Build & Deploy to Cloud Run (DockerHub)
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+env:
+  IMAGE_NAME: ritikdutta/interview-ready
+
+jobs:
+  build_push_deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # ---- DockerHub login ----
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      # ---- Buildx (better caching/build support) ----
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # ---- Build and push ----
+      - name: Build & Push Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ env.IMAGE_NAME }}:latest
+            ${{ env.IMAGE_NAME }}:${{ github.sha }}
+
+      # ---- Authenticate to GCP ----
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ secrets.GCP_PROJECT_ID }}
+
+      # ---- Deploy to Cloud Run (pointing to DockerHub image) ----
+      - name: Deploy to Cloud Run
+        run: |
+          gcloud run deploy "${{ secrets.CLOUD_RUN_SERVICE }}" \
+            --image "docker.io/${{ env.IMAGE_NAME }}:${{ github.sha }}" \
+            --region "${{ secrets.CLOUD_RUN_REGION }}" \
+            --platform managed \
+            --quiet
