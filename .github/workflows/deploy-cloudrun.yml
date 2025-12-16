@@ -31,9 +31,9 @@ jobs:
       - name: Show release info
         shell: bash
         run: |
-          echo "🚀 Release: ${{ steps.vars.outputs.version }}"
-          echo "🔁 Commit:  ${{ steps.vars.outputs.short_sha }}"
-          echo "🐳 Image:   docker.io/${{ env.IMAGE_NAME }}:${{ steps.vars.outputs.version }}"
+          echo " Release: ${{ steps.vars.outputs.version }}"
+          echo " Commit:  ${{ steps.vars.outputs.short_sha }}"
+          echo " Image:   docker.io/${{ env.IMAGE_NAME }}:${{ steps.vars.outputs.version }}"
 
       # ---- DockerHub login ----
       - name: Login to Docker Hub
@@ -94,7 +94,7 @@ jobs:
         shell: bash
         run: |
           {
-            echo "## ✅ Release deployed"
+            echo "##  Release deployed"
             echo ""
             echo "**Version:** \`${{ steps.vars.outputs.version }}\`"
             echo "**Commit:** \`${{ steps.vars.outputs.short_sha }}\`"
