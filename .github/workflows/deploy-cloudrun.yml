@@ -25,18 +25,28 @@ jobs:
         id: vars
         shell: bash
         run: |
-            VERSION="${GITHUB_REF_NAME}"                 # e.g. v1.0.4
-            SAFE_VERSION="$(echo "$VERSION" | tr '.' '-')"  # e.g. v1-0-4
-            echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-            echo "safe_version=$SAFE_VERSION" >> "$GITHUB_OUTPUT"
-            echo "short_sha=${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+          VERSION="${GITHUB_REF_NAME}"                       # e.g. v1.0.4
+          SAFE_VERSION="$(echo "$VERSION" | tr '.' '-')"     # e.g. v1-0-4
+
+          # owner/repo -> owner-repo, lowercase, only [a-z0-9_-], max 63 chars
+          SAFE_REPO="$(echo "${GITHUB_REPOSITORY}" \
+            | tr '[:upper:]' '[:lower:]' \
+            | sed -E 's#[^a-z0-9_-]+#-#g' \
+            | sed -E 's/^-+|-+$//g' \
+            | cut -c1-63)"
+
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "safe_version=$SAFE_VERSION" >> "$GITHUB_OUTPUT"
+          echo "safe_repo=$SAFE_REPO" >> "$GITHUB_OUTPUT"
+          echo "short_sha=${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
 
       - name: Show release info
         shell: bash
         run: |
-          echo " Release: ${{ steps.vars.outputs.version }}"
-          echo " Commit:  ${{ steps.vars.outputs.short_sha }}"
-          echo " Image:   docker.io/${{ env.IMAGE_NAME }}:${{ steps.vars.outputs.version }}"
+          echo "Release: ${{ steps.vars.outputs.version }}"
+          echo "Commit:  ${{ steps.vars.outputs.short_sha }}"
+          echo "Repo:    ${{ steps.vars.outputs.safe_repo }}"
+          echo "Image:   docker.io/${{ env.IMAGE_NAME }}:${{ steps.vars.outputs.version }}"
 
       # ---- DockerHub login ----
       - name: Login to Docker Hub
@@ -87,7 +97,7 @@ jobs:
             --image "docker.io/${{ env.IMAGE_NAME }}:${{ steps.vars.outputs.version }}" \
             --region "${{ secrets.CLOUD_RUN_REGION }}" \
             --platform managed \
-            --labels "release=${{ steps.vars.outputs.safe_version }},commit=${{ steps.vars.outputs.short_sha }},repo=${{ github.repository }}" \
+            --labels "release=${{ steps.vars.outputs.safe_version }},commit=${{ steps.vars.outputs.short_sha }},repo=${{ steps.vars.outputs.safe_repo }}" \
             --set-env-vars "APP_VERSION=${{ steps.vars.outputs.version }},GIT_SHA=${{ steps.vars.outputs.short_sha }}" \
             --quiet
 
@@ -97,10 +107,11 @@ jobs:
         shell: bash
         run: |
           {
-            echo "##  Release deployed"
+            echo "## ✅ Release deployed"
             echo ""
             echo "**Version:** \`${{ steps.vars.outputs.version }}\`"
             echo "**Commit:** \`${{ steps.vars.outputs.short_sha }}\`"
+            echo "**Repo label:** \`${{ steps.vars.outputs.safe_repo }}\`"
             echo "**Docker image:** \`docker.io/${{ env.IMAGE_NAME }}:${{ steps.vars.outputs.version }}\`"
             echo "**Cloud Run service:** \`${{ secrets.CLOUD_RUN_SERVICE }}\`"
             echo "**Region:** \`${{ secrets.CLOUD_RUN_REGION }}\`"
