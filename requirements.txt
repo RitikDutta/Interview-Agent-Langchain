@@ -1,38 +1,14 @@
-# Requirements file for AI Mock Interview Application with Vector Database
-# Core dependencies
-Flask
-gunicorn
-
-# LangChain ecosystem
-langchain
+python-dotenv
+PyMuPDF
 langchain-core
 langchain-community
 langchain-google-genai
 langgraph
-
-# Vector database
+mysql-connector-python
+openai
 pinecone
-langchain-pinecone
-
-# Embeddings and text processing
-# transformers
-huggingface-hub
-
-# Text splitting and document processing
-langchain-text-splitters
-
-# PDF processing
-pypdf
-PyPDF2
-# langchain-community[pdf]
-
-# Google Generative AI
-google-generativeai
-
-# File type detection
-python-magic
-
-# Utilities
-requests==2.31.0
-tqdm==4.66.0
-
+pydantic
+requests
+gunicorn
+Flask
+langgraph-checkpoint-sqlite
