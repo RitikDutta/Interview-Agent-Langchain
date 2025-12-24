@@ -1,0 +1,118 @@
+name: Release → Build & Deploy (Cloud Run)
+
+run-name: Release ${{ github.ref_name }} → Cloud Run
+
+on:
+  push:
+    tags:
+      - "v*"
+
+env:
+  IMAGE_NAME: ritikdutta/interview-ready
+
+jobs:
+  release_deploy:
+    name: Build, Push, Deploy (prod)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Set release variables
+        id: vars
+        shell: bash
+        run: |
+          VERSION="${GITHUB_REF_NAME}"                       # e.g. v1.0.4
+          SAFE_VERSION="$(echo "$VERSION" | tr '.' '-')"     # e.g. v1-0-4
+
+          # owner/repo -> owner-repo, lowercase, only [a-z0-9_-], max 63 chars
+          SAFE_REPO="$(echo "${GITHUB_REPOSITORY}" \
+            | tr '[:upper:]' '[:lower:]' \
+            | sed -E 's#[^a-z0-9_-]+#-#g' \
+            | sed -E 's/^-+|-+$//g' \
+            | cut -c1-63)"
+
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "safe_version=$SAFE_VERSION" >> "$GITHUB_OUTPUT"
+          echo "safe_repo=$SAFE_REPO" >> "$GITHUB_OUTPUT"
+          echo "short_sha=${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+
+      - name: Show release info
+        shell: bash
+        run: |
+          echo "Release: ${{ steps.vars.outputs.version }}"
+          echo "Commit:  ${{ steps.vars.outputs.short_sha }}"
+          echo "Repo:    ${{ steps.vars.outputs.safe_repo }}"
+          echo "Image:   docker.io/${{ env.IMAGE_NAME }}:${{ steps.vars.outputs.version }}"
+
+      # ---- DockerHub login ----
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      # ---- Buildx + cache ----
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # ---- Build and push ----
+      - name: Build & push Docker image (versioned)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ env.IMAGE_NAME }}:${{ steps.vars.outputs.version }}
+            ${{ env.IMAGE_NAME }}:${{ github.sha }}
+            ${{ env.IMAGE_NAME }}:latest
+          labels: |
+            org.opencontainers.image.title=Interview Ready
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.version=${{ steps.vars.outputs.version }}
+            org.opencontainers.image.created=${{ github.run_id }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # ---- Authenticate to GCP ----
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ secrets.GCP_PROJECT_ID }}
+
+      # ---- Deploy to Cloud Run ----
+      - name: Deploy to Cloud Run (release ${{ steps.vars.outputs.version }})
+        shell: bash
+        run: |
+          gcloud run deploy "${{ secrets.CLOUD_RUN_SERVICE }}" \
+            --image "docker.io/${{ env.IMAGE_NAME }}:${{ steps.vars.outputs.version }}" \
+            --region "${{ secrets.CLOUD_RUN_REGION }}" \
+            --platform managed \
+            --labels "release=${{ steps.vars.outputs.safe_version }},commit=${{ steps.vars.outputs.short_sha }},repo=${{ steps.vars.outputs.safe_repo }}" \
+            --update-env-vars "APP_VERSION=${{ steps.vars.outputs.version }},GIT_SHA=${{ steps.vars.outputs.short_sha }}" \
+            --quiet
+
+      # ---- Pretty summary in the Actions UI ----
+      - name: Release summary
+        if: always()
+        shell: bash
+        run: |
+          {
+            echo "## ✅ Release deployed"
+            echo ""
+            echo "**Version:** \`${{ steps.vars.outputs.version }}\`"
+            echo "**Commit:** \`${{ steps.vars.outputs.short_sha }}\`"
+            echo "**Repo label:** \`${{ steps.vars.outputs.safe_repo }}\`"
+            echo "**Docker image:** \`docker.io/${{ env.IMAGE_NAME }}:${{ steps.vars.outputs.version }}\`"
+            echo "**Cloud Run service:** \`${{ secrets.CLOUD_RUN_SERVICE }}\`"
+            echo "**Region:** \`${{ secrets.CLOUD_RUN_REGION }}\`"
+          } >> "$GITHUB_STEP_SUMMARY"
