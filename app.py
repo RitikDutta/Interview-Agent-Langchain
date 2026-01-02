@@ -10,6 +10,8 @@ import os
 from threading import Thread
 from queue import Queue, Empty
 from interview_flow.logging import get_logger
+import tempfile
+import shutil
 
 # Imports
 from interview_flow.infra.rdb import RelationalDB
@@ -20,6 +22,7 @@ from interview_flow import (
     resume_thread,
 )
 from interview_flow.threads import ThreadService
+
 
 app = Flask(__name__)
 logger = get_logger("monitor")
@@ -106,6 +109,56 @@ def fetch_all(user_id: str) -> Dict[str, Any]:
         "state": state,
     }
     return _deep_safe(data)
+
+# -----------------------------------------------------------------------------
+# User Uploads
+# -----------------------------------------------------------------------------
+@app.post("/upload-resume-to-graph")
+def upload_resume_to_graph():
+    """
+    1. Receives PDF from browser.
+    2. Saves it to a temp file.
+    3. Resumes the LangGraph thread passing the FILE PATH as the input.
+    """
+    if 'file' not in request.files:
+        return jsonify({"status": "error", "message": "No file part"}), 400
+    
+    file = request.files['file']
+    user_id = request.form.get('user_id')
+    
+    # Resolve the thread_id just like the chat endpoint does
+    thread_id = threads.resolve_thread_id(user_id, request.form.get('thread_id'))
+
+    if file.filename == '':
+        return jsonify({"status": "error", "message": "No selected file"}), 400
+
+    try:
+        # 1. Save stream to a temporary file on disk
+        # We use mkstemp or NamedTemporaryFile to ensure it persists until the graph reads it
+        fd, temp_path = tempfile.mkstemp(suffix=".pdf", prefix="upload_")
+        with os.fdopen(fd, 'wb') as tmp:
+            shutil.copyfileobj(file, tmp)
+        
+        logger.info(f"Saved upload to {temp_path}, resuming graph for user {user_id}...")
+
+        # 2. Resume the graph! 
+        # We pass the temp_path as the 'content'. 
+        # The node 'node_get_resume_url' will receive this string.
+        res = threads.resume(
+            user_id=user_id, 
+            thread_id=thread_id, 
+            content=temp_path 
+        )
+        
+        # 3. Return the graph response 
+        return jsonify({
+            "status": "success",
+            "data": res
+        })
+
+    except Exception as e:
+        logger.error(f"Graph Upload Failed: {e}", exc_info=True)
+        return jsonify({"status": "error", "message": str(e)}), 500
 
 # -----------------------------------------------------------------------------
 # API (JSON)
