@@ -4,14 +4,17 @@ import json
 from datetime import datetime
 from typing import Any, Dict, Optional
 
-from flask import Flask, jsonify, render_template, render_template_string, request
+from flask import Flask, jsonify, render_template, render_template_string, request, send_from_directory, url_for
 import logging
 import os
 from threading import Thread
 from queue import Queue, Empty
 from interview_flow.logging import get_logger
 import tempfile
-import shutil
+import secrets
+import time
+from pathlib import Path
+from werkzeug.utils import secure_filename
 
 # Imports
 from interview_flow.infra.rdb import RelationalDB
@@ -31,6 +34,11 @@ logger = get_logger("monitor")
 rdb = RelationalDB()
 vdb = VectorStore()
 threads = ThreadService(rdb)
+
+# Uploaded resume storage (served back as a temp link)
+UPLOAD_ROOT = Path(tempfile.gettempdir()) / "resume_uploads"
+UPLOAD_ROOT.mkdir(parents=True, exist_ok=True)
+UPLOAD_TTL_SECONDS = int(os.getenv("RESUME_UPLOAD_TTL_SECONDS") or 3600)
 
 # -----------------------------------------------------------------------------
 # Runtime state cache (in-process).
@@ -110,6 +118,22 @@ def fetch_all(user_id: str) -> Dict[str, Any]:
     }
     return _deep_safe(data)
 
+def _cleanup_old_uploads(max_age_seconds: int = UPLOAD_TTL_SECONDS) -> None:
+    """Best-effort cleanup for stale temp uploads."""
+    try:
+        now = time.time()
+        for p in UPLOAD_ROOT.glob("*"):
+            if not p.is_file():
+                continue
+            age = now - p.stat().st_mtime
+            if age > max_age_seconds:
+                try:
+                    p.unlink(missing_ok=True)
+                except Exception:
+                    pass
+    except Exception as e:
+        logger.warning(f"upload cleanup failed: {e}")
+
 # -----------------------------------------------------------------------------
 # User Uploads
 # -----------------------------------------------------------------------------
@@ -117,48 +141,59 @@ def fetch_all(user_id: str) -> Dict[str, Any]:
 def upload_resume_to_graph():
     """
     1. Receives PDF from browser.
-    2. Saves it to a temp file.
-    3. Resumes the LangGraph thread passing the FILE PATH as the input.
+    2. Saves it to a temp file exposed as an HTTP link.
+    3. Returns the link so the client can send it through the normal chat flow.
     """
     if 'file' not in request.files:
         return jsonify({"status": "error", "message": "No file part"}), 400
     
     file = request.files['file']
-    user_id = request.form.get('user_id')
+    user_id = (request.form.get('user_id') or "").strip()
     
     # Resolve the thread_id just like the chat endpoint does
     thread_id = threads.resolve_thread_id(user_id, request.form.get('thread_id'))
+
+    if not user_id:
+        return jsonify({"status": "error", "message": "Missing user_id"}), 400
 
     if file.filename == '':
         return jsonify({"status": "error", "message": "No selected file"}), 400
 
     try:
-        # 1. Save stream to a temporary file on disk
-        # We use mkstemp or NamedTemporaryFile to ensure it persists until the graph reads it
-        fd, temp_path = tempfile.mkstemp(suffix=".pdf", prefix="upload_")
-        with os.fdopen(fd, 'wb') as tmp:
-            shutil.copyfileobj(file, tmp)
-        
-        logger.info(f"Saved upload to {temp_path}, resuming graph for user {user_id}...")
+        _cleanup_old_uploads()
+        raw_name = secure_filename(file.filename) or "resume.pdf"
+        token = secrets.token_hex(8)
+        stored_name = f"{token}_{raw_name}"
+        dest = UPLOAD_ROOT / stored_name
+        dest.parent.mkdir(parents=True, exist_ok=True)
 
-        # 2. Resume the graph! 
-        # We pass the temp_path as the 'content'. 
-        # The node 'node_get_resume_url' will receive this string.
-        res = threads.resume(
-            user_id=user_id, 
-            thread_id=thread_id, 
-            content=temp_path 
-        )
-        
-        # 3. Return the graph response 
+        file.save(dest)
+
+        resume_url = url_for("serve_uploaded_resume", filename=stored_name, _external=True)
+        logger.info(f"Saved upload to {dest}, generated temp link for user {user_id}")
+
         return jsonify({
             "status": "success",
-            "data": res
+            "resume_url": resume_url,
+            "resume_path": str(dest),
+            "thread_id": thread_id,
+            "message": "Resume uploaded. Paste the link into chat to process."
         })
 
     except Exception as e:
-        logger.error(f"Graph Upload Failed: {e}", exc_info=True)
+        logger.error(f"Upload failed: {e}", exc_info=True)
         return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@app.get("/uploads/resumes/<path:filename>")
+def serve_uploaded_resume(filename: str):
+    safe_name = secure_filename(filename)
+    if not safe_name:
+        return jsonify({"status": "error", "message": "Invalid filename"}), 404
+    try:
+        return send_from_directory(str(UPLOAD_ROOT), safe_name, mimetype="application/pdf")
+    except Exception:
+        return jsonify({"status": "error", "message": "File not found"}), 404
 
 # -----------------------------------------------------------------------------
 # API (JSON)
