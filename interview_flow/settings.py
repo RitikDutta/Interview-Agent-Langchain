@@ -24,6 +24,6 @@ print("-" * 30)
 # GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
 
 # --- MODEL CONFIG ---
-GENAI_MODEL = os.getenv("GENAI_MODEL") or os.getenv("GOOGLE_GENAI_MODEL") or "gemini-1.5-flash"
+GENAI_MODEL = os.getenv("GENAI_MODEL") or os.getenv("GOOGLE_GENAI_MODEL") or "gemini-flash-lite-latest"
 GENAI_MODEL_LOW_TEMP = os.getenv("GENAI_MODEL_LOW_TEMP") or GENAI_MODEL
 QUESTIONS_NAMESPACE = os.getenv("QUESTIONS_NAMESPACE") or "questions_v4"
