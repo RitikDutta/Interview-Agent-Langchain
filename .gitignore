@@ -30,3 +30,4 @@ interview_questions_pdfs/gen_ai.pdf
 langgraph_checkpoints.sqlite
 langgraph_checkpoints.sqlite-shm
 langgraph_checkpoints.sqlite-wal
+.vscode/mcp.json
