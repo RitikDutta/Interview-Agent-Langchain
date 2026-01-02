@@ -365,16 +365,39 @@ def make_save_history(*, rdb):
 def make_node_resume_ETL(*, rdb, vs):
     def node_resume_ETL(state: Dict[str, Any]) -> dict:
         logger.debug("node_resume_ETL")
-        logger.info(f"[resume_ETL] source={state.get('resume_url')}")
+        
+        # This 'source' is the temp_path we sent from app.py
+        source = state.get('resume_url') or ""
+        
+        logger.info(f"[resume_ETL] source path from state={source}")
         logger.thinking("Running ResumeETL for user_id=%s", state.get("user_id"))
-        # Import here to avoid import-time network calls from canonical_normalizer
+        
         from ..ingestion.resume_etl import ResumeETL
         resume_etl = ResumeETL(user_id=state.get("user_id"), rdb=rdb, vdb=vs, verbose=True)
-        profile = resume_etl.run(resume_url_or_path=state.get("resume_url") or "")
+        
+        # --- CHANGED SECTION START ---
+        # We check if it's a file path, open it, and pass the FILE OBJECT to the ETL
+        import os
+        if os.path.isfile(source):
+            with open(source, "rb") as f:
+                # We pass the open file handle 'f'
+                profile = resume_etl.run(uploaded_file=f)
+            
+            # Optional: Clean up temp file now that we are done
+            try:
+                if "upload_" in source: # Safety check to only delete uploads
+                    os.remove(source)
+            except: pass
+        else:
+            # Fallback if it's actually a web URL (http://...)
+            # You might need to adjust ResumeETL to handle URLs again if you support both
+            logger.warning("Source is not a local file, assuming URL or string content")
+            profile = resume_etl.run(uploaded_file=source) 
+        # --- CHANGED SECTION END ---
+
         return {"graph_state": "node_resume_ETL", "profile": profile}
 
     return node_resume_ETL
-
 
 def make_update_profile(*, rdb, vs):
     def update_profile(state: Dict[str, Any]) -> dict:
