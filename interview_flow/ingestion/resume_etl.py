@@ -83,6 +83,7 @@ class ResumeETL:
         self.rdb = rdb or RelationalDB()
         self.vdb = vdb or VectorStore()
 
+    # dead code deleted later (we are not using paths upload , user directly upload file on browser)
     def _resolve_to_local_path(self, resume_url_or_path: str) -> tuple[str, str | None]:
         src = (resume_url_or_path or "").strip()
         if not src:
@@ -116,10 +117,29 @@ class ResumeETL:
             raise FileNotFoundError(f"Local resume path not found: {p}")
         return str(p), None
 
-    def extract(self, resume_url_or_path: str) -> Dict[str, Any]:
+    def _save_upload_to_temp(self, uploaded_file) -> tuple[str, str | None]:
+        """
+        uploaded_file: browser-upload object (Flask/FastAPI), must provide file-like data.
+        Returns (local_path, tmp_dir) for cleanup.
+        """
+        tmp_dir = tempfile.mkdtemp(prefix="resume_upload_")
+        local_path = os.path.join(tmp_dir, "resume.pdf")
+
+        # Support both Flask and FastAPI shapes:
+        # - Flask: uploaded_file is FileStorage -> has .stream or .read()
+        # - FastAPI: UploadFile -> has .file
+        src_fp = getattr(uploaded_file, "file", None) or getattr(uploaded_file, "stream", None) or uploaded_file
+
+        with open(local_path, "wb") as f:
+            shutil.copyfileobj(src_fp, f)
+
+        return local_path, tmp_dir
+
+
+    def extract(self, uploaded_file: Any) -> Dict[str, Any]:
         tmp_dir = None
         try:
-            local_path, tmp_dir = self._resolve_to_local_path(resume_url_or_path)
+            local_path, tmp_dir = self._save_upload_to_temp(uploaded_file)
 
             pages = []
             try:
@@ -264,11 +284,11 @@ class ResumeETL:
         log.info("[load] done")
         return result
 
-    def run(self, resume_url_or_path: str) -> Dict[str, Any]:
+    def run(self, uploaded_file: Any) -> Dict[str, Any]:
         log.info(f"[run] start ETL for user_id={self.user_id}")
-        ex = self.extract(resume_url_or_path)
+        ex = self.extract(uploaded_file)                                                                        #EXTRACT
         log.info(f"[run] extracted pages={ex['pages_used']}")
-        normalized = self.transform(ex["raw_text"], ex["pages_used"])
-        load_res = self.load(normalized, ex["pages_used"])
+        normalized = self.transform(ex["raw_text"], ex["pages_used"])           #TRANSFORM
+        load_res = self.load(normalized, ex["pages_used"])                                 #LOAD
         log.info("[run] ETL complete")
         return {"profile": normalized, "load_result": load_res}
