@@ -12,3 +12,4 @@ requests
 gunicorn
 Flask
 langgraph-checkpoint-sqlite
+flask-cors
