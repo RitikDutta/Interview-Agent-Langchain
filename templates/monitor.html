@@ -296,14 +296,13 @@
               const formData = new FormData();
               formData.append('file', file);
               formData.append('user_id', USER_ID);
-              // If you need thread_id, you can extract it from RAW data:
-              // formData.append('thread_id', RAW.rdb.profile.thread_id || '');
+              formData.append('thread_id', (RAW.rdb && RAW.rdb.profile && RAW.rdb.profile.thread_id) || '');
 
+              const originalText = uploadBtn.innerHTML;
               uploadBtn.disabled = true;
               uploadBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Uploading...';
 
               try {
-                  // This endpoint assumes you added it to app.py
                   const res = await fetch('/upload-resume-to-graph', {
                       method: 'POST',
                       body: formData 
@@ -311,17 +310,30 @@
                   const json = await res.json();
 
                   if (json.status === 'success') {
+                      const link = json.resume_url || json.resume_path || '';
                       console.log('Upload success:', json);
-                      location.reload(); 
+                      uploadBtn.innerHTML = 'Link Ready';
+
+                      if (link) {
+                          const input = document.getElementById('resumeInput');
+                          if (input) {
+                              input.value = link;
+                              input.focus();
+                          }
+                      }
+                      setTimeout(() => {
+                          uploadBtn.disabled = false;
+                          uploadBtn.innerHTML = originalText;
+                      }, 1500);
                   } else {
-                      alert('Upload Error: ' + json.message);
-                      uploadBtn.disabled = false;
-                      uploadBtn.innerText = '📂 Upload PDF';
+                      throw new Error(json.message || 'Upload failed');
                   }
               } catch (e) {
-                  alert('Network Error: ' + e.message);
+                  alert('Upload Error: ' + e.message);
                   uploadBtn.disabled = false;
                   uploadBtn.innerText = '📂 Upload PDF';
+              } finally {
+                  fileInput.value = '';
               }
           };
       }

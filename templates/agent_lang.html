@@ -1062,6 +1062,7 @@
 
                 const btn = this.uploadResumeBtn;
                 const originalContent = btn.innerHTML;
+                let success = false;
                 
                 // Show loading state
                 btn.disabled = true;
@@ -1070,6 +1071,7 @@
                 const formData = new FormData();
                 formData.append('file', file);
                 formData.append('user_id', this.userId);
+                formData.append('thread_id', this.threadId);
                 
                 try {
                     const res = await fetch('/upload-resume-to-graph', {
@@ -1080,23 +1082,32 @@
                     const json = await res.json();
                     
                     if (json.status === 'success') {
+                        success = true;
+                        const link = json.resume_url || json.resume_path || '';
                         btn.innerHTML = '<i class="fas fa-check"></i>';
-                        this.addAgentLog('Resume uploaded successfully.');
-                        this.updateProfile(); // Refresh profile to show new skills/domain
+                        if (link) {
+                            this.messageInput.value = link;
+                            this.messageInput.focus();
+                            this.addAgentLog('Resume uploaded. Click Send to share the link with the agent.');
+                        } else {
+                            this.addAgentLog('Resume uploaded. Paste the generated link into chat to process it.');
+                        }
                     } else {
-                        alert('Upload failed: ' + json.message);
-                        btn.innerHTML = originalContent;
+                        throw new Error(json.message || 'Upload failed');
                     }
                 } catch (e) {
                     console.error(e);
-                    alert('Network error during upload');
+                    alert(e.message || 'Network error during upload');
                     btn.innerHTML = originalContent;
+                    btn.disabled = false;
                 } finally {
                     // Reset button after 2 seconds if success
-                    setTimeout(() => {
-                        btn.disabled = false;
-                        btn.innerHTML = originalContent;
-                    }, 2000);
+                    if (success) {
+                        setTimeout(() => {
+                            btn.disabled = false;
+                            btn.innerHTML = originalContent;
+                        }, 2000);
+                    }
                     // Clear input so same file can be selected again
                     this.hiddenResumeInput.value = '';
                 }
