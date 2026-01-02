@@ -182,11 +182,14 @@
                 <pre class="json" id="stateJson">{{ st|tojson(indent=2) }}</pre>
               </details>
 
-              
-
               <hr>
               {% set started = (st|length) > 0 %}
+              
+              <input type="file" id="pdfUploadInput" accept=".pdf" style="display: none;">
+
               <div class="d-flex gap-2">
+                <button class="btn btn-outline-warning" id="uploadBtn" title="Upload PDF Resume">📂 Upload PDF</button>
+
                 <input class="form-control" id="resumeInput" placeholder="Type reply to current prompt or value for interrupt...">
                 <button class="btn btn-success" id="sendBtn">Send</button>
                 {% if not started %}
@@ -209,7 +212,6 @@
       </div>
 
       <hr class="my-4">
-      <!-- Conversation History (Relational DB) -->
       {% set hist = (data.rdb.history or []) %}
       <div class="card mb-4">
         <div class="card-body">
@@ -279,6 +281,51 @@
         if(!res.ok) throw new Error('HTTP '+res.status);
         return await res.json();
       }
+
+      // --- NEW UPLOAD LOGIC ---
+      const uploadBtn = document.getElementById('uploadBtn');
+      const fileInput = document.getElementById('pdfUploadInput');
+
+      if (uploadBtn && fileInput) {
+          uploadBtn.onclick = () => fileInput.click();
+
+          fileInput.onchange = async () => {
+              if (!fileInput.files[0]) return;
+
+              const file = fileInput.files[0];
+              const formData = new FormData();
+              formData.append('file', file);
+              formData.append('user_id', USER_ID);
+              // If you need thread_id, you can extract it from RAW data:
+              // formData.append('thread_id', RAW.rdb.profile.thread_id || '');
+
+              uploadBtn.disabled = true;
+              uploadBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Uploading...';
+
+              try {
+                  // This endpoint assumes you added it to app.py
+                  const res = await fetch('/upload-resume-to-graph', {
+                      method: 'POST',
+                      body: formData 
+                  });
+                  const json = await res.json();
+
+                  if (json.status === 'success') {
+                      console.log('Upload success:', json);
+                      location.reload(); 
+                  } else {
+                      alert('Upload Error: ' + json.message);
+                      uploadBtn.disabled = false;
+                      uploadBtn.innerText = '📂 Upload PDF';
+                  }
+              } catch (e) {
+                  alert('Network Error: ' + e.message);
+                  uploadBtn.disabled = false;
+                  uploadBtn.innerText = '📂 Upload PDF';
+              }
+          };
+      }
+      // -----------------------
 
       const startBtn = document.getElementById('startBtn');
       if (startBtn) {

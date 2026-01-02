@@ -759,7 +759,6 @@
         strategy: "{{ strategy or '' }}"
       };
     </script>
-    <!-- top bar -->
     <header class="top-bar">
         <div class="meeting-info">
             <h1 class="meeting-title">AI Mock Interview</h1>
@@ -784,12 +783,9 @@
         </div>
     </header>
 
-    <!-- main content area -->
     <main class="main-content">
-        <!-- left side, video call -->
         <div class="video-container">
             <div class="video-area">
-                <!-- your webcam feed -->
                 <div class="main-video">
                     <video id="candidateVideo" class="video-stream" autoplay muted playsinline></video>
                     <div class="video-placeholder" id="videoPlaceholder">
@@ -810,7 +806,6 @@
                     </div>
                 </div>
 
-                <!-- ai coach thumbnail -->
                 <div class="video-thumbnail">
                     <div class="interviewer-placeholder">
                         <div class="interviewer-avatar">AI</div>
@@ -819,7 +814,6 @@
                     </div>
                 </div>
 
-                <!-- question pops up here -->
                 <div class="question-overlay" id="questionOverlay">
                     <button class="tts-button" id="ttsButton" title="Read question aloud">
                         <i class="fas fa-volume-up"></i>
@@ -828,7 +822,6 @@
                 </div>
             </div>
 
-            <!-- bottom controls (mic, camera, etc) -->
             <div class="control-bar">
                 <textarea 
                     id="messageInput" 
@@ -849,6 +842,10 @@
                     <i class="fas fa-volume-up"></i>
                 </button>
                 
+                <input type="file" id="hiddenResumeInput" accept=".pdf" style="display: none;">
+                <button id="uploadResumeBtn" class="control-button" title="Upload Resume (PDF)">
+                    <i class="fas fa-file-upload"></i>
+                </button>
                 <button id="cameraToggleBtn" class="control-button" title="Toggle Camera">
                     <i class="fas fa-video"></i>
                 </button>
@@ -863,13 +860,11 @@
             </div>
         </div>
 
-        <!-- right side, dashboard -->
         <aside class="side-panel">
             <div class="panel-header">
                 <h2 class="panel-title">Interview Dashboard</h2>
             </div>
             <div class="panel-content">
-                <!-- what the ai is doing behind the scenes -->
                 <div class="logs-section">
                     <div class="section-header">
                         <h3 class="section-title">Agent Process Log</h3>
@@ -883,7 +878,6 @@
                     </div>
                 </div>
 
-                <!-- ai's analysis of you -->
                 <div class="profile-section">
                     <h3 class="section-title">Live Profile</h3>
                     <div id="profileDetails">
@@ -950,6 +944,10 @@
                 this.muteToggleBtn = document.getElementById('muteToggleBtn');
                 this.endCallBtn = document.getElementById('endCallBtn');
                 this.sendMessageBtn = document.getElementById('sendMessageBtn');
+
+                // NEW: Upload buttons
+                this.uploadResumeBtn = document.getElementById('uploadResumeBtn');
+                this.hiddenResumeInput = document.getElementById('hiddenResumeInput');
                 
                 // chat input and loading spinner
                 this.messageInput = document.getElementById('messageInput');
@@ -1033,6 +1031,14 @@
                 this.textToSpeechBtn.addEventListener('click', () => this.playTextToSpeech());
                 this.ttsButton.addEventListener('click', () => this.playTextToSpeech());
                 this.sendMessageBtn.addEventListener('click', () => this.sendCurrentMessage());
+
+                // NEW: Upload button events
+                if (this.uploadResumeBtn) {
+                    this.uploadResumeBtn.addEventListener('click', () => this.hiddenResumeInput.click());
+                }
+                if (this.hiddenResumeInput) {
+                    this.hiddenResumeInput.addEventListener('change', (e) => this.handleResumeUpload(e));
+                }
                 
                 // handle typing in the text box
                 this.messageInput.addEventListener('keypress', (e) => {
@@ -1047,6 +1053,53 @@
                     this.startInterviewBtn.addEventListener('click', () => this.startInterview());
                 }
                 this.endCallBtn.addEventListener('click', () => this.endInterview());
+            }
+
+            // NEW: Handle File Upload
+            async handleResumeUpload(event) {
+                const file = event.target.files[0];
+                if (!file) return;
+
+                const btn = this.uploadResumeBtn;
+                const originalContent = btn.innerHTML;
+                
+                // Show loading state
+                btn.disabled = true;
+                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+
+                const formData = new FormData();
+                formData.append('file', file);
+                formData.append('user_id', this.userId);
+                
+                try {
+                    const res = await fetch('/upload-resume-to-graph', {
+                        method: 'POST',
+                        body: formData
+                    });
+                    
+                    const json = await res.json();
+                    
+                    if (json.status === 'success') {
+                        btn.innerHTML = '<i class="fas fa-check"></i>';
+                        this.addAgentLog('Resume uploaded successfully.');
+                        this.updateProfile(); // Refresh profile to show new skills/domain
+                    } else {
+                        alert('Upload failed: ' + json.message);
+                        btn.innerHTML = originalContent;
+                    }
+                } catch (e) {
+                    console.error(e);
+                    alert('Network error during upload');
+                    btn.innerHTML = originalContent;
+                } finally {
+                    // Reset button after 2 seconds if success
+                    setTimeout(() => {
+                        btn.disabled = false;
+                        btn.innerHTML = originalContent;
+                    }, 2000);
+                    // Clear input so same file can be selected again
+                    this.hiddenResumeInput.value = '';
+                }
             }
 
             setThinking(active) {
